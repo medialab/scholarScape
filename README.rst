@@ -21,39 +21,37 @@ User Functions
 5. List projects and number of campaigns
 6. See states of campaigns [alive,paused,finished]
 
-Specifications
---------------
-
-1.  Best data quality (we don't want to lose data)
-        detect duplicates, mark them as duplicates of another publication but
-        don't remove them
-
 Data Structure
 --------------
 
->>> Project "Bruno Latour"
->>>    |-Campaign 1 : start_urls=['authors:Bruno Latour',deep=3]
->>>        |- publication 1
->>>        |- publication 2
->>>        |- publication 3 #superPublication made from 5 and 6
->>>        |- publication 4
->>>        |- publication 5 : parent=3
->>>        |- publication 6 : parent=3
->>>        ...
->>>    |-Campaign 2 : start_urls['authors:Bruno Latour',deep=4]
->>>        |- publication 151
->>>        |- publication 152
->>>        |- publication 153
->>>        |- publication 154
->>> AnotherProject
->>>    |-Campaign 4
->>>        ...
->>>    |- Campaign 5
->>>    ...
-    
+Our data structure enable the user to separate its different projects, to 
+add new scraped data to one projects, to pause or unpause a crawl campaign::
+
+    Project "Bruno Latour"
+       |-Campaign 1 : start_urls=['authors:Bruno Latour',deep=3]
+           |- publication 1
+           |- publication 2
+           |- publication 3 #superPublication made from 5 and 6
+           |- publication 4
+           |- publication 5 : parent=3
+           |- publication 6 : parent=3
+           ...
+       |-Campaign 2 : start_urls['authors:Bruno Latour',deep=4]
+           |- publication 151
+           |- publication 152
+           |- publication 153
+           |- publication 154
+    AnotherProject
+       |-Campaign 4
+           ...
+       |- Campaign 5
+       ...
+        
     
 Command Line
 ------------
+
+scholarScrape should allow users to use this commands. It will be added soon.
 
 *scholarScrape startproject project_name*
     This command should add a new collection named project_name in the database.
@@ -78,12 +76,10 @@ Command Line
     
 *scholarScrape export -p project\* -c campaign [-z zipfile | -j jsonfile | -g gexf_file]*
 
-*scholarScrape config*
-    
+*scholarScrape config*  
     Specify host, port, database
     
-*scholarScrape list*
-    
+*scholarScrape list*  
     Lists all the project and their campaigns
     (list all the database and find all campaigns object)   
 
