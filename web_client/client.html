@@ -1,0 +1,294 @@
+<html>
+<head>
+<title>Client</title>
+<script src="http://ajax.googleapis.com/ajax/libs/jquery/1/jquery.min.js" type="text/javascript" language="javascript" charset="utf-8"></script>
+<script src="js/jquery.validate.min.js" type="text/javascript" language="javascript" charset="utf-8"></script>
+<style type="text/css" media="screen">
+/* <![CDATA[ */
+    body {
+        font: 15px "Helvetica Neue",Arial,sans-serif;
+        padding:20px;
+    }
+    input[type="text"], textarea {
+        padding: 9px 7px 10px 7px;
+        border-radius: 3px;
+        margin-bottom: 8px;
+        opacity: 1!important;
+        font: 15px "Helvetica Neue",Arial,sans-serif;
+        border:1px solid #3d6383 ;
+        outline : 0 !important;
+    }
+    
+
+    
+    select {
+        box-shadow : 0 -1px 0 rgba(0,0,0,.3),inset 0 1px 2px rgba(0,0,0,.1),0 0 10px rgba(255,255,255,.9) ;
+    }
+    
+    textarea {
+        width:500px;
+        height:100px;
+        margin-top:5px;
+    }
+    
+    input[type="text"]:focus, textarea:focus {
+        outline : 0 !important;
+        box-shadow : 1px 1px 5px #FFF, -1px -1px 5px #b3cfe7;
+    }
+    label { width: 10em; float: left; }
+    label.error { float: none; color: red; padding-left: .5em; vertical-align: top; display:block}
+    form p { clear: both;margin:0; }
+    fieldset {
+        padding:20px;
+        -moz-border-radius: 4px;
+        -webkit-border-radius: 10px;
+        border : 1px solid white;
+        border-bottom: 1px solid #709bbe;
+        display:inline-block;
+    }
+    
+    h2 {
+        font-size:1.8em;
+        background:#709bbe;
+        -moz-border-radius: 10px;
+        -webkit-border-radius: 10px;
+        padding:10px;
+        color:white;
+        display:inline-block;
+    }
+    .project .title{
+        cursor:hand;
+    }
+    .project {
+        list-style-type:square
+    }
+    .project ul  { list-style-type:none}
+    .project ul li:before{
+        content:"- "
+    }
+    
+    .project { width:200px}
+    
+    .nested {  list-style-type:circle}
+    .result { margin:auto;  
+            padding:10px; 
+            border-radius:10px; 
+            position:fixed; 
+            top:10px; 
+            display:inline-block;
+            padding-right:20px;
+        }
+
+    
+/* ]]> */
+</style>
+
+
+</head>
+<body>
+<div class="result" style="display:none;">
+
+</div>
+
+<form id="project_form">
+<fieldset>
+        <h2>Start a project</h2>
+        <p>
+            <label for="p_p">Project name:</label><input type="text" id="p_p" name="project" class="required"/><br/>
+        </p>
+            <input type="submit" id="submit_p" value="Create project">
+        </p>
+</fieldset>
+</form>
+<form id="campaign_form">
+<fieldset>
+        <h2>Start a campaign</h2>
+        <p>
+            <label for="c_p">Project :</label><select id="c_p" name="project" class="required list_projects"></select><a href="#" id="update">update</a><br/>
+        </p>
+        <p>
+            <label for="c_c">Campaign name :</label><input type="text" id="c_c" name="campaign" class="required"/><br/>
+        </p>
+        <p>
+            <label for="c_s">Start titles :</label><textarea id="c_t" name="start_titles" class="required"></textarea><br/>
+        </p>
+        <p>
+            <label for="c_d">Depth :</label><input id="c_d" type="text" size="1" name="depth" value="2" class="required number"/><br/>
+        </p>
+        <p>
+            <label for="c_dd">Download delay :</label><input id="c_dd" size="2" type="text" name="download_delay" value="30" class="required number" /><br/>
+        </p>
+        <p>
+            <input type="submit" id="submit_c" value="Start the crawl!">
+        </p>
+</fieldset>
+</form>
+
+
+
+<form id="export_form">
+<fieldset>
+        <h2>Export a project</h2>
+        <p>
+            <label for="e_p">Project name :</label><select id="e_p" name="project" class="required list_projects"></select><br/>
+        </p>
+        <p>
+            <label for="e_md">Max depth :</label><input type="text" size="1" id="e_md" name="max_depth" class="required  number" value="3"></select><br/>
+        </p>
+            <input type="submit" id="submit_e_gexf" value="Export GEXF">
+            <input type="submit" id="submit_e_json" value="Export database (JSON)">
+            <input type="submit" id="submit_e_zip" value="Export ZIP">
+        </p>
+</fieldset>
+</form>
+<h2>List Projects campaign</h2>
+<ul id="list_projects_campaigns">
+</ul>
+<script type="text/javascript" language="javascript" charset="utf-8">
+
+$( function () {
+    var call = function (method, params, callback){
+			    var query = JSON.stringify({			// It's JSON RPC
+				    "method" : method,
+				    "params" : params,
+			    });
+			
+			    var rpc_xhr = new XMLHttpRequest();		// Classic Ajax code
+			    rpc_xhr.onreadystatechange = function () {
+				    if (rpc_xhr.readyState == 4 && rpc_xhr.status == 200) {
+					    callback(rpc_xhr.responseText);
+				    }
+			    }
+			    rpc_xhr.open("POST", "/json", true);
+			    rpc_xhr.setRequestHeader("Content-Type", "application/x-www-form-urlencoded");
+			    rpc_xhr.send(query);
+			    console.log(query)
+    }
+
+    var print_results = function (data) {
+       data = JSON.parse(data)[0]
+       console.log(data)
+       $(".result").html(data['message']);
+       if (data['code'] == 'ok')
+           $(".result").css({"background":"#abd280", "border" : "3px solid green"})
+       if (data['code'] == 'fail')
+           $(".result").css({"background":"#d28a80","border":"3px solid red"})    
+       $(".result").append(
+            $("&nbsp;&nbsp;&nbsp;<a href='#'>X</a>").click(function (e) {e.preventDefault(); $('.result').toggle(1000) })
+       ).show(500);
+       
+    }
+    update_list_campaigns = function() {
+        $("#list_projects_campaigns").empty()
+        list_campaigns = {};
+        call("list_all_campaigns",new Array(), function (data) {
+            list_campaigns = JSON.parse(data)[0]
+            for (var i=0; i<list_campaigns.length;i++) {
+                project = list_campaigns[i] 
+                console.log(project[0])
+                var html = "<li class='project unnested'><span class='title'>"
+                html += project[0]+" ("+project[1].length+") </span> <a href='"+project[0]+"' class='del-project'>del</a> <ul style='display:none'>"
+                for (var j=0; j<project[1].length;j++) {
+                    html += "<li>"+project[1][j].name+"</li>"
+                }
+                html += "</ul></li>"
+                $("#list_projects_campaigns").append(html)
+            }
+        });
+        
+    }
+    
+    $('#list_projects_campaigns .del-project').live('click', function(e) {
+        e.preventDefault();
+        project_name = $(this).attr("href")
+        if (confirm("Delete this project ?"))
+            call("remove_project",new Array(project_name),print_results)
+        update_list_project()
+    })    
+
+    $('#list_projects_campaigns .project').live('click', function(e) {
+        $(this).children('ul').toggle('500')
+        $(this).toggleClass("nested")
+        $(this).toggleClass("unnested")
+    })
+    update_list_project = function () {        
+            call("list_project",new Array(), function (data) {
+                $(".list_projects option").remove(); 
+                window.list_projects = JSON.parse(data)[0];
+                for (var i=0; i<window.list_projects.length; i++) {
+                    $(".list_projects").append("<option value='" +window.list_projects[i] + "'>" +window.list_projects[i] + "</option>")
+                }
+                update_list_campaigns();    
+            })   
+    }
+    update_list_project()
+
+    $("#submit_c").bind('click', function (e) { 
+        e.preventDefault();
+        if ($("#campaign_form").valid()) {
+           // jsonrpc_startproject(project, campaign, start_urls, download_delay=30, depth=1):
+            var project        = $("#c_p").val() ,
+                campaign       = $("#c_c").val() ,
+                start_titles     = $("#c_t").val().split("\n") ,
+                depth          = $("#c_d").val() ,
+                download_delay = $("#c_dd").val();
+            call("start_campaign",new Array(project,campaign,start_titles,download_delay,depth), print_results) 
+        }    
+    });
+    $("#submit_p").bind('click', function (e) { 
+        e.preventDefault();
+        if ($("#project_form").valid()) {
+           // jsonrpc_startproject(project, campaign, start_urls, download_delay=30, depth=1):
+            var project        = $("#p_p").val();
+            call("start_project",new Array(project), print_results)
+             
+        }  
+    });
+    $("#submit_e_gexf").bind('click', function (e) { 
+        e.preventDefault();
+        $("#export_form fieldset a").remove(300)
+        if ($("#export_form").valid()) {
+           // jsonrpc_startproject(project, campaign, start_urls, download_delay=30, depth=1):
+            var project        = $("#e_p").val();
+            var max_depth      = $("#e_md").val();
+            call("export_gexf",new Array(project,max_depth), function (data) {
+                $("a").remove(":contains('Download Gexf')");  
+                $("#export_form fieldset").append("<a href='"+JSON.parse(data)[0]+"' title='Download GEXF'>Download Gexf</a>")
+            })
+             
+        }  
+    });
+    $("#submit_e_json").bind('click', function (e) { 
+        e.preventDefault();
+        if ($("#export_form").valid()) {
+           // jsonrpc_startproject(project, campaign, start_urls, download_delay=30, depth=1):
+            var project        = $("#e_p").val();
+            call("export_json",new Array(project), function (data) {
+                $("a").remove(":contains('Download Json')"); 
+                $("#export_form fieldset").append("<a href='"+JSON.parse(data)[0]+"' title='Download JSON'>Download Json</a>")
+            })
+             
+        }  
+    });
+    $("#submit_e_zip").bind('click', function (e) { 
+        e.preventDefault();
+        if ($("#export_form").valid()) {
+           // jsonrpc_startproject(project, campaign, start_urls, download_delay=30, depth=1):
+            var project        = $("#e_p").val();
+            call("export_zip",new Array(project), function (data) {
+                $("a").remove(":contains('Download ZIP')");   
+                $("#export_form fieldset").append("<a href='"+JSON.parse(data)[0]+"' title='Download ZIP'>Download ZIP</a>")
+            })
+             
+        }  
+    });
+    $("#update").bind('click', function (e) {
+        update_list_project();
+    });
+
+    
+});
+</script>
+
+</body>
+</html>

@@ -1,0 +1,18 @@
+{
+    "mongo" : {
+        "host" : "localhost",
+        "port" : 27017,
+        "database" : "scholarScape",
+        "user" : "scholarScape",
+        "passwd" : "diabal"
+     },
+     "scrapyd" : {
+        "host" : "localhost",
+        "port" : 6800,
+        "project_name" : "scholar"
+     },
+     "twisted" : {
+        "port" : 6969
+     },
+     "data_dir" : "data"
+}
