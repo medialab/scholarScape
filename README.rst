@@ -75,7 +75,10 @@ scholarScrape should allow users to use this commands. It will be added soon.
     -z zip_file     Output ZIP file (if no name is specified default is all.zip)
     
 *scholarScrape export -p project\* -c campaign [-z zipfile | -j jsonfile | -g gexf_file]*
-
+    The user can export the database to a json file, export a graph from the crawl,
+    from an entire project or from a particular campaign.
+    
+    
 *scholarScrape config*  
     Specify host, port, database
     

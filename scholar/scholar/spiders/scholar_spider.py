@@ -21,6 +21,8 @@ from scrapy.utils.response import get_base_url
 from scrapy.utils.url import urljoin_rfc
 
 from urllib import quote_plus as qp
+import json
+
 
 class ParsingRules :
 	
@@ -50,12 +52,24 @@ class ScholarSpider(CrawlSpider): #depth first left to right
    
    # ------soon the crawlspider will inherit from initspider
    #       and this will no longer be necessary  -----------
+
     def __init__(self, *a, **kw):
         self.bibtex = False
+        if 'start_urls_' in kw :
+            self.start_urls = kw['start_urls_'].split(";")
+            print self.start_urls
         super(ScholarSpider, self).__init__(*a, **kw)
+
+        self.log("\nArguments passed to the spider are\n")
+        self.log(str(json.dumps(kw, indent=4)))
+        
         self._postinit_reqs = []
         self._init_complete = False
         self._init_started = False
+        if 'project_name' in kw:
+            self.project = kw['project_name']
+        if 'campaign_name' in kw:
+            self.campaign = kw['campaign_name']
     
     def make_requests_from_url(self, url):
         req = super(ScholarSpider, self).make_requests_from_url(url)
@@ -86,7 +100,6 @@ class ScholarSpider(CrawlSpider): #depth first left to right
         return self.login()
 
     def login(self):
-        print "login"
         return self.initialized()
         return Request("https://www.google.com/accounts/ServiceLogin?hl=en", callback=self.fillForm)
 
@@ -186,7 +199,6 @@ class ScholarSpider(CrawlSpider): #depth first left to right
                 yield rule.process_request(r)
    
     def parse_start_url(self, response):
-        print "coucou"
         return self.parse_items(response)
 
     def parse_items(self, response):  
@@ -196,65 +208,79 @@ class ScholarSpider(CrawlSpider): #depth first left to right
         items_or_requests = []
         for p in publications:
             item = ScholarItem()
-            item['depth_cb'] = response.meta['depth']
+        
             #TITLE
             if p.select(pr.title_xpath  + "//text()").extract():
                 item['title'] = str.join("", p.select(pr.title_xpath  + "//text()").extract())
-            #PUBLICATION TYPE (PDF,BOOK,HTML)
-            if p.select(pr.type_pub_xpath+ "/text()").extract():
-                item['type_pub'] = p.select(pr.type_pub_xpath+ "/text()").extract()[0]
-            # LINK
-            if p.select(pr.href_xpath).extract() :    
-                item['href'] = p.select(pr.href_xpath).extract()[0]
-            
-            first_link = p.select(pr.cited_by_xpath) # not necessarily Cited by link
-            if  first_link :
-                if 'Cited by' in first_link.select("./text()").extract()[0] :
-                    item['times_cited'] = int(re.search('Cited by ([0-9]*)',first_link.select("./text()").extract()[0]).group(1))
-                    item['id'] = re.search('.*cites=([0-9]*)&.*',first_link.select("./@href").extract()[0]).group(1)
-            if 'cites=' in response.url:
-                    cites = re.search('.*cites=([0-9]*)&.*', response.url).group(1)
-                    item['cites'] = cites
-            item['scrapped_from'] = response.url
-            
-
-            
-            infos = p.select(pr.info_xpath + "//text()").extract()[0]
-            
-            item['abstract'] = str.join("", p.select(pr.abstract_xpath +"//text()").extract() )
-            item['abstract'] = item['abstract'].replace(infos,"")
-            
-            infos = infos.split("-")
-            
-            if len(infos)>1 :
-                authors=re.sub(u"…","",infos[0])[0]
-                infos=" ".join(infos[1:])
-                d=re.match("(.*?),? *(\d\d\d\d) *(.*)",infos)
-                if d : 
-                    item['book_title'] = d.group(1)
-                    item['date']       = d.group(2)
-                    item['source']     = d.group(3) #source
-                else :                    
-                    item['source']     = infos			
-            else :
-                item['authors']=infos[0]
-            
-            if not self.bibtex:
-                items_or_requests.append(item)
-            else:
-                base_url = get_base_url(response)
-                text_bibtex = p.select("font//span[@class ='gs_fl']/a[last()]/text()").extract()
+                item['depth_cb'] = response.meta['depth']
+                
+                #PUBLICATION TYPE (PDF,BOOK,HTML)
+                if p.select(pr.type_pub_xpath+ "/text()").extract():
+                    item['type_pub'] = p.select(pr.type_pub_xpath+ "/text()").extract()[0]
+                    item['title'] = item['title'].replace(item['type_pub'],"")
+                
+                # LINK
+                if p.select(pr.href_xpath).extract() :    
+                    item['href'] = p.select(pr.href_xpath).extract()[0]
+                
+                first_link = p.select(pr.cited_by_xpath) # not necessarily Cited by link
+                if  first_link :
+                    if 'Cited by' in first_link.select("./text()").extract()[0] :
+                        item['times_cited'] = int(re.search('Cited by ([0-9]*)',first_link.select("./text()").extract()[0]).group(1))
+                        item['id'] = re.search('.*cites=([0-9]*)&.*',first_link.select("./@href").extract()[0]).group(1)
+                if 'cites=' in response.url:
+                        cites = re.search('.*cites=([0-9]*)&.*', response.url).group(1)
+                        item['cites'] = cites
+                item['scrapped_from'] = response.url
+                
+                infos = p.select(pr.info_xpath + "//text()").extract()[0]
+                
+                item['abstract'] = str.join("", p.select(pr.abstract_xpath +"//text()").extract() )
+                item['abstract'] = item['abstract'].replace(infos,"")
+                
+                infos = infos.split("-")
+                
+                if len(infos)>1 :
+                    authors=re.sub(u"…","",infos[0])[0]
+                    infos=" ".join(infos[1:])
+                    d=re.match("(.*?),? *(\d\d\d\d) *(.*)",infos)
+                    if d : 
+                        item['book_title'] = d.group(1)
+                        item['date']       = d.group(2)
+                        item['source']     = d.group(3) #source
+                    else :                    
+                        item['source']     = infos			
+                else :
+                    item['authors']=infos[0]
+                
+                item['project']  = self.project
+                item['campaign'] = self.campaign    
+                
+                
                 follow_links = p.select("font//span[@class ='gs_fl']/a")
                 related_url = ""
                 for fl in follow_links:
                     if fl.select("text()").extract()[0] == u"Related articles" :
                         related_url = fl.select("@href").extract()[0]
+                    
+                item['bibtex_id'] = related_url.split(":")[1]
                 
-                bibtex_id = related_url.split(":")[1]
-                url_bibtex = "http://scholar.google.com/scholar.bib?q=info:" + bibtex_id + ":scholar.google.com/&output=citation&hl=en&as_sdt=0,5&ct=citation&cd=0"
-                request = Request(url_bibtex,callback=self.parse_bibtex)
-                request.meta['item'] = item
-                items_or_requests.append(request)            
+                if not self.bibtex:
+                    items_or_requests.append(item)
+                else:
+                    base_url = get_base_url(response)
+                    text_bibtex = p.select("font//span[@class ='gs_fl']/a[last()]/text()").extract()
+                    follow_links = p.select("font//span[@class ='gs_fl']/a")
+                    related_url = ""
+                    for fl in follow_links:
+                        if fl.select("text()").extract()[0] == u"Related articles" :
+                            related_url = fl.select("@href").extract()[0]
+                    
+                    bibtex_id = related_url.split(":")[1]
+                    url_bibtex = "http://scholar.google.com/scholar.bib?q=info:" + bibtex_id + ":scholar.google.com/&output=citation&hl=en&as_sdt=0,5&ct=citation&cd=0"
+                    request = Request(url_bibtex,callback=self.parse_bibtex)
+                    request.meta['item'] = item
+                    items_or_requests.append(request)            
         return items_or_requests
         
     def parse_bibtex(self, response): 

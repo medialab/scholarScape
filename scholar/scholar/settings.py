@@ -16,6 +16,9 @@ USER_AGENT = '%s/%s' % (BOT_NAME, BOT_VERSION)
 DEPTH_LIMIT=3
 CONCURRENT_REQUESTS_PER_DOMAIN = 1
 
+#CLOSESPIDER_ITEMCOUNT=5
+#CLOSESPIDER_TIMEOUT=5
+
 SPIDER_MIDDLEWARES = {
     'scholar.middlewares.dontincreasedepth.DontIncreaseMiddleware' : 901,
     #depth middleware number is 900 so dontIncreaseMiddleware will be called before depthmiddleware on the output path
@@ -41,7 +44,8 @@ USER_AGENT_LIST = [
 ]
 
 EXTENSIONS = [
-'scholar.extensions.package.Create_package'
+#'scholar.extensions.package.Create_package'
+'scrapy.contrib.closespider.CloseSpider'
 ]
 
 ITEM_PIPELINES = [

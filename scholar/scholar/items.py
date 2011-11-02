@@ -22,6 +22,10 @@ class ScholarItem(Item):
     date = Field()
     depth_cb = Field()
     parent_id = Field()
+    project = Field()
+    campaign = Field()
+    bibtex_id = Field()
+
     
     
     

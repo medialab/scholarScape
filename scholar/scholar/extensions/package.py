@@ -3,6 +3,7 @@ from scrapy import signals
 from scholar.graph import create_graph_from_db
 import shlex, subprocess
 import zipfile
+import time
 
 class Create_package(object):
 
@@ -11,7 +12,10 @@ class Create_package(object):
         dispatcher.connect(self.engine_stopped, signal=signals.engine_stopped)
 
     def engine_started(self):
-        print "Starting crawling..."
+        print "Let's wait a little"
+        time.sleep(10)
+        print "A little bit more"
+        time.sleep(5)
 
     def engine_stopped(self):
         print "Creating graph...."

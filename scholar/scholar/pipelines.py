@@ -1,3 +1,6 @@
+#-*- coding:utf-8 -*-
+
+
 # Define your item pipelines here
 #
 # Don't forget to add your pipeline to the ITEM_PIPELINES setting
@@ -6,94 +9,82 @@
 from pymongo import Connection
 import Levenshtein
 from colorize import colorize
+import pprint
 
-def size(thing) :
- if thing:
-    return len(thing)
- else:
-    return 0
-
-def myInt(i) :
-    if i:
-        return i
-    else :
-        return 0
+pp = pprint.PrettyPrinter(indent=4)
 
 class MongoDBPipeline(object):
-    #sudo mongod --dbpath /var/lib/mongodb
-    
-
-    
     def __init__(self):
-        self.connection = Connection()
+        #TODO a templater
+        self.connection = Connection("mongodb://scholarScape:diabal@localhost:27017/scholarScape")
         self.db=self.connection['scholarScape']
-        self.collection=self.db['publications']    
-        self.collection.remove({}); 
-                
     def process_item(self, item, spider):
+        collection = self.db[item['project']]
+        print collection
+            
         blue = colorize.blue
         green = colorize.green
         red = colorize.red
-        # lets see if its not a duplicate
-        
+               
+        del item['project']
         # 1st lets check if the id is in the database
         print green("processing item")
-        same_item = self.collection.find_one({"id" : item.get('id')})
-        if same_item :
-            self.collection.update({"id" : item.get('id')}, {
-                                        "$push" : {
-                                            "depths" : item['depth_cb']
-                                         }
-                                    }) 
-            print red("Already in the database, added item's depth to the publication's depth list")
-            return item
+        if item.get('id') : 
+            same_item = collection.find_one({"id" : item.get('id')})
+            if same_item :
+                print same_item
+                collection.update({"id" : item.get('id')}, {
+                                            "$push" : {
+                                                "depths" : item['depth_cb']} }) 
+                print red("Already in the database, added item's depth to the publication's depth list")
+                return item
         # then we have to check against all the 1st records
-        if self.collection.find({}).count() :    
-            for each in self.collection.find({"parent_id": {"$ne" : "null"}}) : # we don't get the children
-                if each.get("title") and \
-                   item.get("title") and \
-                   rate_duplicates(each.get("title"), item.get("title"))  :
-                    # if item has children, its already a superPublication
-                    print red("This item's title fuzzy matches another one, add it with property parent_id \
-                                and add his depth to the parent")
-                    if 'nr_children' in each: # we got ourselves a parent
-                        each['times_cited']+=   item.get('times_cited')
-                        each['cites']      += [ item.get('cites') ]
-                        if size(item.get('title')) > size(each.get("title")) : # i use my function "size" because dict.get can return None
-                            each['title']= item['title']
-                        if size(item.get('authors')) > size(each.get("authors")) :
-                            each['authors'] = item['authors']
-                        each['depths'].append(item['depth_cb'])
-                        each['nr_children'] += 1
-                        self.collection.update(dict(each))
-                        item['parent_id'] = each['_id']
-                        self.collection.insert(dict(item)) 
-                    else :
-                        superPublication = {
-                            "title"      : max( [ each.get('title')  , item.get("title")  ], key=size   ),
-                            "authors"    : max( [ each.get('authors'), item.get("authors")], key=size   ),
-                            "times_cited": myInt(each.get('times_cited')) + myInt(item.get('times_cited')),
-                            "cites"      : [ each.get('cites'), item.get('cites') ],
-                            "depths"   : [ each['depth_cb'], item['depth_cb'] ],
-                        }
-                        superPublication["cites"] = filter(lambda v : v,superPublication["cites"]) # remove Nones
-                        superPublication["nr_children"] = 2
-                        sP_id = self.collection.insert(dict(superPublication))
-                        each['parent_id'] = sP_id
-                        item['parent_id'] = sP_id                        
-                        self.collection.update(dict(each))
-                        self.collection.update(dict(item))
-                        print red("duplicate item:" + str(item) + "was detected!")
-                        return item    
+        for each in collection.find({"parent_id" : {"$exists" : False}}) : # we don't get the children
+            if each.get("title") and \
+               item.get("title") and \
+               rate_duplicates(each.get("title"), item.get("title"))  :
+                # if item has children, its already a superPublication
+                print red("""This item's title fuzzy matches another one, add it with property parent_id
+                            and add his depth to the parent""")
+                            
+                 # if it's a superPublication it already has nr_children attribute            
+                if 'nr_children' in each:
+                    each['ids'].append(item['id'])
+                    each['times_cited']+=   item.get('times_cited')
+                    each['cites']      += [ item.get('cites') ]
+                    if len(item.get('title') or "") > len(each.get("title") or "") :
+                        each['title']= item['title']
+                    if len(item.get('authors') or "") > len(each.get("authors") or "") :
+                        each['authors'] = item['authors']
+                    each['depths'].append(item['depth_cb'])
+                    each['nr_children'] += 1       
+                    item['parent_id'] = each['_id']
                     
+                # we have to create the superpublication    
                 else :
-                    self.collection.insert(dict(item))
-                    print blue("item inserted")
-                    return item
-        else :
-            self.collection.insert(dict(item))
-            print green("first item inserted")
-            return item
+                    superPublication = {
+                        "title"      : max( [ each.get('title') or "", item.get("title") or "" ], key=len   ),
+                        "authors"    : max( [ each.get('authors') or "", item.get("authors") or ""], key=len   ),
+                        "times_cited": each.get('times_cited') or 0 + item.get('times_cited') or 0,
+                        "cites"      : [ each.get('cites'), item.get('cites') ],
+                        "depths"     : [ each['depth_cb'], item['depth_cb'] ],
+                        "type" :"SuperPublicacion",
+                        "ids" : [ each.get('id'), item.get('id') ]
+                    }
+                    superPublication["cites"] = filter(lambda v : v,superPublication["cites"]) # remove Nones
+                    superPublication["nr_children"] = 2
+                    sP_id = collection.insert(dict(superPublication))
+                    each['parent_id'] = sP_id
+                    item['parent_id'] = sP_id                        
+                print red("duplicate item: was detected!")
+                collection.update({"_id": each['_id']}, dict(each))
+                collection.insert(dict(item))
+                return item
+            # if we could not determine it was a duplicate we insert it         
+        collection.insert(dict(item))
+        print blue("item inserted")
+        return item
+
 
 
 def rate_duplicates(string1,string2) :
@@ -120,5 +111,5 @@ def rate_duplicates(string1,string2) :
 	elif levenshtein_rate>0.6 :
 		return levenshtein_rate
 	else :	
-		return 0	
+		return None	
    
