@@ -1,0 +1,93 @@
+<h2>Launch</h2>
+<p>
+    Here is the place where you launch your crawling campaigns.
+</p>
+
+<script type="text/javascript" language="javascript" charset="utf-8">
+// <![CDATA[
+    $( function () {
+
+    $dialog = $('#dialog')
+    .dialog({
+	    autoOpen: false,
+	    modal : true,
+	    title: 'Name of the project ?'
+    });
+    $('#add_sproject').click(function() { 
+        console.log("clicked")
+        $dialog.dialog('open');
+        // prevent the default action, e.g., following a link
+        return false;
+    });
+    
+    $(".c_search_type").change( function () {
+        console.log($(this).val())
+        $("#search_type").text($(this).val())
+    });
+    
+    $("#decrease_font").click(function(e) {
+        e.preventDefault();
+        $("#c_t").css('font-size',0.9*parseInt($("#c_t").css('font-size')))
+    });
+    $("#increase_font").click(function(e) {
+        e.preventDefault();
+        $("#c_t").css('font-size',(1/0.9)*parseInt($("#c_t").css('font-size')))
+    });
+});        
+  
+// ]]>
+</script>
+<div id="dialog" class="dialog">
+    <form id="project_form">
+                    <input type="text" id="p_p" name="project" class="required"/><br/>
+                    <input type="submit" id="submit_p" value="Create project !">
+    </form>
+</div>
+
+<form id="campaign_form">
+<fieldset>
+        <table>
+        <tr>
+            <td><label for="c_p">Project :</label></td>
+            <td> <select id="c_p" name="project" class="required list_projects"></select>&nbsp;<a href="" id="add_sproject">+</a></td>
+        </tr>
+        <tr>
+            <td><label for="c_c">Campaign name :</label></td>
+            <td><input placeholder="my campaign" type="text" id="c_c" name="campaign" class="required"/></td>
+        </tr>
+        <tr>
+            <td><label for="c_search_type">Search type :</label></td>
+            <td>
+                Words<input type="radio" class="c_search_type" name="c_search_type" checked="checked" value="words"/>
+                Titles<input type="radio" class="c_search_type" name="c_search_type"  value="titles"/>
+                Authors<input type="radio" class="c_search_type" name="c_search_type" value="authors"/>
+                Urls<input type="radio" class="c_search_type" name="c_search_type" value="urls"/>
+            </td>
+        </tr>
+        <tr id="row_c_exact">
+            <td><label for="c_exact">Exact :</label></td>
+            <td><input type="checkbox" value="checked" name="c_exact" id="c_exact"></td>
+        </tr>
+        
+        <tr>
+            <td><label for="c_s">Start <span id="search_type">titles</span> :</label><br/>
+            <a id="decrease_font" style="font-size:0.6em; color:#DDD; cursor:pointer;">font-size--</a>&nbsp
+            <a id="increase_font" style="font-size:0.6em; color:#DDD; cursor:pointer;">font-size++</a>
+            </td>
+            <td><textarea id="c_t" name="start_titles" placeholder="break to put multiple values" style="width:500px; height:300px;" class="required"></textarea></td>
+        </tr>
+        <tr>
+            <td><label for="c_d">Depth :</label></td>
+            <td><input id="c_d" type="text" size="1" name="depth" value="2" class="required number"/></td>
+        </tr>
+        <tr>
+<!--            <td><label for="c_dd">Download delay :</label></td>-->
+            <td><input id="c_dd" size="2" type="hidden" name="download_delay" value="30" class="required number" /></td>
+        </tr>
+        </table>
+        <p style="text-align:center">
+            <input type="submit" id="submit_c" value="Start the crawl!">
+        </p>
+</fieldset>
+</form>
+

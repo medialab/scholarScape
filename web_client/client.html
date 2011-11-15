@@ -253,7 +253,7 @@ $( function () {
             var max_depth      = $("#e_md").val();
             call("export_gexf",new Array(project,max_depth), function (data) {
                 $("a").remove(":contains('Download Gexf')");  
-                $("#export_form fieldset").append("<a href='"+JSON.parse(data)[0]+"' title='Download GEXF'>Download Gexf</a>")
+                $("#export_form fieldset").append("<a href='downloader?file="+JSON.parse(data)[0]+"' title='Download GEXF'>Download Gexf</a>")
             })
              
         }  
@@ -265,7 +265,7 @@ $( function () {
             var project        = $("#e_p").val();
             call("export_json",new Array(project), function (data) {
                 $("a").remove(":contains('Download Json')"); 
-                $("#export_form fieldset").append("<a href='"+JSON.parse(data)[0]+"' title='Download JSON'>Download Json</a>")
+                $("#export_form fieldset").append("<a href='downloader?file="+JSON.parse(data)[0]+"' title='Download JSON'>Download Json</a>")
             })
              
         }  
@@ -277,16 +277,16 @@ $( function () {
             var project        = $("#e_p").val();
             call("export_zip",new Array(project), function (data) {
                 $("a").remove(":contains('Download ZIP')");   
-                $("#export_form fieldset").append("<a href='"+JSON.parse(data)[0]+"' title='Download ZIP'>Download ZIP</a>")
+                $("#export_form fieldset").append("<a href='downloader?file="+JSON.parse(data)[0]+"' title='Download ZIP'>Download ZIP</a>")
             })
              
-        }  
+        }       
     });
     $("#update").bind('click', function (e) {
         update_list_project();
     });
 
-    
+    call("monitor",new Array("jd","test"),print_results)
 });
 </script>
 
