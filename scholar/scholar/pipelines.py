@@ -13,11 +13,16 @@ import pprint
 
 pp = pprint.PrettyPrinter(indent=4)
 
+MONGO_USER     = "scholarScape"
+MONGO_PASSWD   = "diabal"
+MONGO_HOST     = "localhost"
+MONGO_PORT     = "27017"
+MONGO_DATABASE = "scholarScape"
+
 class MongoDBPipeline(object):
     def __init__(self):
-        #TODO a templater
-        self.connection = Connection("mongodb://scholarScape:diabal@localhost:27017/scholarScape")
-        self.db=self.connection['scholarScape']
+        self.connection = Connection("mongodb://%s:%s@%s:%s/%s" % (MONGO_USER, MONGO_PASSWD, MONGO_HOST, MONGO_PORT, MONGO_DATABASE) )
+        self.db=self.connection[MONGO_DATABASE]
     def process_item(self, item, spider):
         collection = self.db[item['project']]
         print collection
@@ -65,10 +70,11 @@ class MongoDBPipeline(object):
                     superPublication = {
                         "title"      : max( [ each.get('title') or "", item.get("title") or "" ], key=len   ),
                         "authors"    : max( [ each.get('authors') or "", item.get("authors") or ""], key=len   ),
-                        "times_cited": each.get('times_cited') or 0 + item.get('times_cited') or 0,
+                        "times_cited": (each.get('times_cited') or 0) + (item.get('times_cited') or 0),
                         "cites"      : [ each.get('cites'), item.get('cites') ],
                         "depths"     : [ each['depth_cb'], item['depth_cb'] ],
                         "type" :"SuperPublicacion",
+                        "campaign" : each['campaign'],
                         "ids" : [ each.get('id'), item.get('id') ]
                     }
                     superPublication["cites"] = filter(lambda v : v,superPublication["cites"]) # remove Nones

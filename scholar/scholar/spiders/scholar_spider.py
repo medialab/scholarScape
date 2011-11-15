@@ -262,8 +262,8 @@ class ScholarSpider(CrawlSpider): #depth first left to right
                 for fl in follow_links:
                     if fl.select("text()").extract()[0] == u"Related articles" :
                         related_url = fl.select("@href").extract()[0]
-                    
-                item['bibtex_id'] = related_url.split(":")[1]
+                if related_url:    
+                    item['bibtex_id'] = related_url.split(":")[1]
                 
                 if not self.bibtex:
                     items_or_requests.append(item)

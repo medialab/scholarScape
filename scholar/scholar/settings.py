@@ -44,7 +44,7 @@ USER_AGENT_LIST = [
 ]
 
 EXTENSIONS = [
-#'scholar.extensions.package.Create_package'
+'scholar.extensions.spider_status.Spider_status',
 'scrapy.contrib.closespider.CloseSpider'
 ]
 

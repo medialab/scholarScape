@@ -5,21 +5,14 @@ scholarScape
 Description
 -----------
 
-This command line programm allow users to crawl and scrape Google Scholar. One
-would start a new crawl campain from starting points or from another campain in
-order to deepen the crawl.
-
+This program allows one to automatically scrape publications from Google Scholar,
+starting from words to search ("Bruno Latour", "We have never been modern") and
+following the "Cited by" links. You can then export the graph of the publications.
+ 
 User Functions
 --------------
 
-1.  Start project
-2.  In a particular project, start campaign from url(s) 
-3.  In a particular project, start campaign from another campain to deepen the crawl
-4.  Export data from a particular campain 
-        * JSON
-        * GEXF
-5. List projects and number of campaigns
-6. See states of campaigns [alive,paused,finished]
+The main interface is for now a WebService
 
 Data Structure
 --------------
