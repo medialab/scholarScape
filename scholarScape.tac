@@ -14,7 +14,6 @@ import argparse
 import pprint 
 import json
 from pymongo import Connection
-from scholar.scholar.graph import create_graph_from_db
 import shlex, subprocess
 import zipfile
 import urllib
