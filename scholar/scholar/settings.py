@@ -20,7 +20,8 @@ CONCURRENT_REQUESTS_PER_DOMAIN = 1
 #CLOSESPIDER_TIMEOUT=5
 
 SPIDER_MIDDLEWARES = {
-    'scholar.middlewares.dontincreasedepth.DontIncreaseMiddleware' : 901,
+    'scholar.middlewares.dontincreasedepth.DepthDontIncreaseMiddleware' : 900,
+    'scrapy.contrib.spidermiddleware.depth.DepthMiddleware': None,
     #depth middleware number is 900 so dontIncreaseMiddleware will be called before depthmiddleware on the output path
 }
 
@@ -45,6 +46,7 @@ USER_AGENT_LIST = [
 
 EXTENSIONS = [
 'scholar.extensions.spider_status.Spider_status',
+'scholar.extensions.duplicates.Duplicates',
 'scrapy.contrib.closespider.CloseSpider'
 ]
 

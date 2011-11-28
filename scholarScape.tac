@@ -31,6 +31,11 @@ from contextlib import nested
 import subprocess as sub
 from pymongo.errors import AutoReconnect
 import test
+from pymongo import objectid
+
+# Read config file and fill in mongo and scrapyd config files with custom values
+# try to connect to DB, send egg to scrapyd server
+# then start twisted server
 print "Loading config file..."
 try :
     with open("config.json","r") as config_file:
@@ -42,38 +47,38 @@ except IOError as e:
 except ValueError as e:
     print "Config file is not valid JSON", e
     exit()
+
+# Check if the DB is available
 try :
     Connection("mongodb://" + config['mongo']['user'] + ":" + 
             config['mongo']['passwd'] + "@" + config['mongo']['host'] + ":" + str(config['mongo']['port']) + "/" + config['mongo']['database'] )
 except AutoReconnect:
     print "Could not connect to mongodb server", config['mongo']
     exit()
+
+# Render the pipeline template 
 print "Rendering pipelines.py with values from config.json..."
 try :
-    with nested(open("scholar/scholar/pipelines-template.py", "r"), open("scholar/scholar/pipelines.py", "w")) as (a, b):
-        b.write(pystache.render(a.read(), config['mongo']))
+    with nested(open("scholar/scholar/pipelines-template.py", "r"), open("scholar/scholar/pipelines.py", "w")) as (template, generated):
+        generated.write(pystache.render(template.read(), config['mongo']))
 except IOError as e:
     print "Could not open either pipeline-template file or pipeline file"
+    #TODO noms des ficheirs a printer
     print e
     exit() 
-except Exception as e:
-    print "Unexpected error"
-    print e
-    exit()
-  
+
+# Render the scrapy cfg  
 print "Rendering scrapy.cfg with values from config.json..."
 try :
-    with nested(open("scholar/scrapy-template.cfg", "r"), open("scholar/scrapy.cfg", "w")) as (a, b):
-        b.write(pystache.render(a.read(), config['scrapyd']))
+    with nested(open("scholar/scrapy-template.cfg", "r"), open("scholar/scrapy.cfg", "w")) as (template, generated):
+        generated.write(pystache.render(template.read(), config['scrapyd']))
 except IOError as e:
     print "Could not open either scrapy.cfg template file or scrapy.cfg"
     print e
     exit() 
-except Exception as e:
-    print "Unexpected error"
-    print e
-    exit()  
-print "Sending scholarScrape's scrapy part to scrapyd server..."
+
+# Deploy the egg     
+print "Sending scholarScrape's scrapy egg to scrapyd server..."
 os.chdir("scholar")
 p = sub.Popen(['scrapy','deploy'], stdout=sub.PIPE, stderr=sub.PIPE)
 output, errors = p.communicate()
@@ -90,14 +95,15 @@ except ValueError:
     exit()
 print "The egg was successfully sent to scrapyd server", config['scrapyd']['host'], "on port", config['scrapyd']['port']
 os.chdir("..")
-print "Starting the server"
 
+print "Starting the server"
 root_dir = os.path.dirname(__file__)    
 pp = pprint.PrettyPrinter(indent=4)
 web_client_dir = "web_client"
 data_dir = os.path.join(root_dir,config["data_dir"])
 
 class Home(resource.Resource):
+    #TODO get url friendlier
     isLeaf = False
  
     def getChild(self, name, request):
@@ -109,15 +115,12 @@ class Home(resource.Resource):
     def render_GET(self, request):
         request.setHeader("Content-Type", "text/html; charset=utf-8")
         if "page" in request.args:
-            print "%s.html" % request.args['page'][0]
-            print os.getcwd()
             path = os.path.join(web_client_dir, "%s.html" % request.args['page'][0])
             path = path if os.path.exists(path) else  os.path.join(web_client_dir, "404.html")
         else :
             path = os.path.join(web_client_dir, "index.html")
 
         layout_path = os.path.join(web_client_dir, "layout.html")
-        #TODO
         with nested(open(path, "r"), open(layout_path, "r")) as (fpage, flayout):
             layout = flayout.read().decode("utf-8")
             page = fpage.read().decode("utf-8")
@@ -143,7 +146,6 @@ def _connect_to_db():
         print "Could not connect to the database"
         exit()
 
-
 def scholarize(     query="",
                     nr_results_per_page="100",
                     exact="",
@@ -163,6 +165,9 @@ def scholarize(     query="",
                              #"soc", #  Social Sciences, Arts, and Humanities
                              #"eng", #  Engineering, Computer Science, and Mathematics
                     ] ) :
+    """
+    Advanced research in Google Scholar to URL
+    """
     return ("http://scholar.google.com/scholar?\
                                  as_q="+ qp(query) +"& \
                                  num="+ nr_results_per_page +"& \
@@ -178,40 +183,82 @@ def scholarize(     query="",
                                  hl=en& \
                                  as_subj=" + str.join('&as_subj',areas) ).replace(" ","")
 
+
 class scholarScape(jsonrpc.JSONRPC):
     """
-    An example object to be published.
+    JSON-RPC interface
     """
 
     addSlash = True
     projects = []
     
     def jsonrpc_start_project(self,project_name):
+        """JSON-RPC method to start a project"""
         # checking if projects already exists
         if project_name not in db.collection_names() :
             db.create_collection(project_name)
             return dict(code = "ok", message = project_name + " successfully created.") 
         else :
-            return dict(code = "fail", message = "Sorry, error" + str(ValueError))
+            return dict(code = "fail", message = "Sorry, error" )
     
     def jsonrpc_list_project(self):
+        """JSON-RPC method to get the lists of all the projects"""
         collection_names=db.collection_names()
         collection_names.remove('system.indexes')
         collection_names.remove('system.users')
+        collection_names = [collection_name for collection_name in collection_names if not collection_name.startswith("__")]
         return collection_names
+    
+    def jsonrpc_give_me_duplicates(self, project, campaign, limit) :
+        """Return lists of duplicates"""
         
+        TITLE_THRESOLD = 0.8
+        
+        dup_col = db["__dup__"+project+"-"+campaign]
+        col = db[project]
+        total_number_of_possible_duplicates = dup_col.find({  "title_score" : {"$gt" : TITLE_THRESOLD, "$lt" : 1} }).count()
+        number_duplicates_already_checked = dup_col.find({  "title_score" : {"$gt" : TITLE_THRESOLD, "$lt" : 1}, "human_say" : {"$exists" : True}	}).count()
+        possible_duplicates = dup_col.find({  "title_score" : {"$gt" : TITLE_THRESOLD, "$lt" : 1}, "human_say" : {"$exists" : False}	}).limit(limit)
+        return ( total_number_of_possible_duplicates,
+                 number_duplicates_already_checked,
+                [ (
+                      col.find_one( {"_id" : pb["_id1"] })['title'],
+                      col.find_one( {"_id" : pb["_id2"] })['title'],
+                      round(pb["title_score"],2),
+                      str(pb["_id"]) 
+                    ) 
+                      for pb in possible_duplicates
+                ] 
+                )
+    
+    def jsonrpc_duplicate_human_check(self, project, campaign, dup_id, is_duplicate):
+        collection_name = "__dup__"+project+"-"+campaign
+        print collection_name
+        dup_id =  objectid.ObjectId(dup_id)
+        db[collection_name].update({"_id" : dup_id}, {"$set" : {"human_say" : is_duplicate}})
+        print dup_id
+        print db["__dup__"+project+"-"+campaign].find_one({"_id" : dup_id})['human_say']
+        print
+        if is_duplicate :
+            return "Has been marked as duplicate"
+        return "Has been unmarked as duplicate"
+    
     def jsonrpc_list_campaigns(self, project_name):
-        """ returns the campaigns for a particular project"""
+        """
+        JSON-RPC method to get the lists of all the campaigns in a particular
+        project.
+        """
         collection=db[project_name]
 
         campaigns=[campaign for campaign in collection.find({'download_delay' : {'$exists':True}},{"_id":0}) ]
-        pp.pprint(campaigns)
         return [project_name,campaigns]
     
     def jsonrpc_list_all_campaigns(self) :
-        collection_names=db.collection_names()
-        collection_names.remove('system.indexes')
-        collection_names.remove('system.users')
+        """
+        JSON-RPC method Return a sorted array of arrays containing all the 
+        projects with all the campaigns
+        """
+        collection_names=self.jsonrpc_list_project()
         
         projects = []
         for collection_name in collection_names:
@@ -221,6 +268,9 @@ class scholarScape(jsonrpc.JSONRPC):
         return sorted(projects,key=lambda x:x[0])
         
     def jsonrpc_start_campaign(self, project, campaign, search_type, starts, download_delay=30, depth=1, exact=False):
+        """
+        JSON-RPC method to start a campaign.
+        """
         collection = db[project]
         if collection.find({ "name" : campaign }).count() > 0 :
             return dict(code = "fail", message = "Already existing campaign : campaign could not be created")     
@@ -232,12 +282,13 @@ class scholarScape(jsonrpc.JSONRPC):
                 return scholarize(exact=x, where_words_occurs='title')
             if exact and search_type == "words" :
                 return scholarize(exact=x)
+                
+            if search_type == "words"  :    return scholarize(query=x)
+            if search_type == "titles"  :   return scholarize(query=x, where_words_occurs='title')
             if search_type == "authors" :   return scholarize(author=x)
             if search_type == "urls"    :   return x
 
-        
-        url = 'http://lrrr.medialab.sciences-po.fr:6800/schedule.json'
-        print [scholarize_custom(start) for start in filter(lambda x : x, starts)]
+        url = 'http://%s:%s/schedule.json' % (config['scrapyd']['host'], config['scrapyd']['port']) 
         values = [
               ("project" , "scholar"),
               ('spider' , 'scholar_spider'),
@@ -256,8 +307,7 @@ class scholarScape(jsonrpc.JSONRPC):
             result = dict(code = "fail", message = "Could not contact scrapyd server, maybe it's not started...")
             return result
         
-        the_page = response.read()
-        results = json.loads(the_page)
+        results = json.loads(response.read())
         print results
         if results['status'] == "ok":
             result = dict(code = "ok", message = "The crawling campaign was successfully launched. You can see it in the Explore section.\n")
@@ -276,69 +326,71 @@ class scholarScape(jsonrpc.JSONRPC):
         else :
             result = dict(code = "fail", message = "There was an error telling scrapyd to launch campaign crawl")
             return result
-    
-
-    
-    
+            
     def jsonrpc_export_gexf(self, project_name, campaign,max_depth=None):
+        """JSON-RPC method to export a graph from a particular project/campaign."""
         g = nx.Graph()
-        hash_table = dict()
         collection = db[project_name]
-        what_to_search = {"parent_id" : {"$exists" : True}, "id" : {"$exists" : True}}
+        
+        # The hash table will act as a translation table child -> parent to
+        # enable that a publication which links to a child will be connected
+        # to the parent instead of the child
+        hash_table = dict()
+        children = {"parent_id" : {"$exists" : True}, "id" : {"$exists" : True}}
         if campaign != "*":
-            what_to_search['campaign'] = campaign
-        for publication in collection.find(what_to_search) :
+            children['campaign'] = campaign
+        for publication in collection.find(children) :
             hash_table[publication['id']] = str(publication['parent_id'])
 
-        def add_pub_in_graph(pub) :
-            id          = pub.get('id') or str(pub.get('_id')) 
-            depth       = min( (x for x in [pub.get('depth_cb'), min(pub.get('depths'))] if x is not None) )
+        def add_pub_in_graph(pub) :               
+            cites = False
+            publication_id = pub.get('id') or str(pub['_id'])
+            pub['depth'] = min(pub['depths'])
 
             for k in pub.keys() :
-                if k == "abstract" :
+                if k == "abstract" : # we don't want abstract in the graph
                     del pub[k]
-                elif k == "cites" :
+                elif k == "cites" : # nor cites because there are the links already
                     cites = pub[k]
                     del pub[k]
                 else :
+                    #anything that is not an int or a float becomes unicode
                     if type(pub[k]) != int and type(pub[k]) != float :
                         pub[k] = unicode(pub[k])
-                
-            g.add_node( id, depth=depth, **pub)
+            
+            label = pub.get("title") or ""
+            if pub.get("title") : del pub["title"]
+            g.add_node(publication_id, label=label, **pub)
 
             if cites:
                 source = pub.get('id') or str(pub['_id'])
                 if type(cites) == unicode :
                     cites = [cites]
-
-                pprint.pprint(cites)
+                # we pass the cited publications through the hash table to get
+                # the parents if there is one
                 targets = [hash_table.get(cite) or cite for cite in cites]
-
                 for target in targets :
-                    print source,
-                    print target,
                     g.add_edge(source,target)
-
-        what_to_search = {"download_delay" : {"$exists" : False}, "parent_id" : {"$exists" : False}} # we don't take the campaign objects nor the leaves
-        i=0
-        for pub in collection.find(what_to_search): # get only nodes that are not campaign
-            try :
-                add_pub_in_graph(pub)
-                i+=1
-            except Exception as e:
-                print e
-        print i        
-            
+        
+        #getting all the publications that are not children
+        not_children = {"download_delay" : {"$exists" : False}, "parent_id" : {"$exists" : False}} 
+        if campaign != "*" :
+            not_children["campaign"] = campaign
+        for not_child in collection.find(not_children): 
+            add_pub_in_graph(not_child) #adding them to the graph
+         
+        # forge a name 
         filename = os.path.join(os.path.dirname(__file__), data_dir, "gexf", project_name + "-" + campaign + "-" + str(getrandbits(128)) + ".gexf" )
-        print "nb noeuds dans le graphes", len(g.nodes())
+        
+        # filter nodes whose depth is > max_depth
         to_del = [k for k,n in g.node.iteritems() if n.get('depth') > int(max_depth)]
         g.remove_nodes_from(to_del)
-        print "nb noeuds dans le graphes", len(g.nodes())
+        
+        #write graph to gexf file
         nx.write_gexf(g,filename)
         return filename
         
-
-    #TODO TODO TODO
+        
     def jsonrpc_export_duplicates(self, project, campaign) :
         g = nx.Graph()
         collection = db[project]
@@ -352,7 +404,8 @@ class scholarScape(jsonrpc.JSONRPC):
         filename = os.path.join(os.path.dirname(__file__), data_dir, "gexf", "duplicates - "+project+ "-" + campaign + "-" + str(getrandbits(128)) + ".gexf" )
         nx.write_gexf(g,filename)
         return filename
-        
+    
+    #TODO TODO TODO
     def jsonrpc_export_json(self,project_name) :
         print "Dumping database..."
         filename = os.path.join(os.path.dirname(__file__), data_dir, "json", project_name + str(getrandbits(128)) + ".json" )

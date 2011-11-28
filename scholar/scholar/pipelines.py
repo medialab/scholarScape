@@ -8,10 +8,8 @@
 
 from pymongo import Connection
 import Levenshtein
-from colorize import colorize
 import pprint
-
-pp = pprint.PrettyPrinter(indent=4)
+from scrapy import log
 
 MONGO_USER     = "scholarScape"
 MONGO_PASSWD   = "diabal"
@@ -26,96 +24,73 @@ class MongoDBPipeline(object):
     def process_item(self, item, spider):
         collection = self.db[item['project']]
         print collection
-            
-        blue = colorize.blue
-        green = colorize.green
-        red = colorize.red
-               
+    
         del item['project']
         # 1st lets check if the id is in the database
-        print green("processing item")
+        log.msg("processing item")
         if item.get('id') : 
-            same_item = collection.find_one({"id" : item.get('id')})
+            same_item = collection.find_one({"id" : item.get('id'), "campaign" : item['campaign']})
             if same_item :
-                print same_item
-                collection.update({"id" : item.get('id')}, {
-                                            "$push" : {
+                collection.update({"id" : item['id']}, {
+                                            "$addToSet" : {
                                                 "depths" : item['depth_cb']} }) 
-                print red("Already in the database, added item's depth to the publication's depth list")
+                log.msg("item " + str(item['id']) + " already in DB, added only depth")
                 return item
+                
         # then we have to check against all the 1st records
-        for each in collection.find({"parent_id" : {"$exists" : False}}) : # we don't get the children
-            if each.get("title") and \
-               item.get("title") and \
-               rate_duplicates(each.get("title"), item.get("title"))  :
-                # if item has children, its already a superPublication
-                print red("""This item's title fuzzy matches another one, add it with property parent_id
-                            and add his depth to the parent""")
-                            
-                 # if it's a superPublication it already has nr_children attribute            
-                if 'nr_children' in each:
-                    each['ids'].append(item['id'])
-                    each['times_cited']+=   item.get('times_cited')
-                    each['cites']      += [ item.get('cites') ]
-                    if len(item.get('title') or "") > len(each.get("title") or "") :
-                        each['title']= item['title']
-                    if len(item.get('authors') or "") > len(each.get("authors") or "") :
-                        each['authors'] = item['authors']
-                    each['depths'].append(item['depth_cb'])
-                    each['nr_children'] += 1       
-                    item['parent_id'] = each['_id']
-                    
-                # we have to create the superpublication    
-                else :
-                    superPublication = {
-                        "title"      : max( [ each.get('title') or "", item.get("title") or "" ], key=len   ),
-                        "authors"    : max( [ each.get('authors') or "", item.get("authors") or ""], key=len   ),
-                        "times_cited": (each.get('times_cited') or 0) + (item.get('times_cited') or 0),
-                        "cites"      : [ each.get('cites'), item.get('cites') ],
-                        "depths"     : [ each['depth_cb'], item['depth_cb'] ],
-                        "type" :"SuperPublicacion",
-                        "campaign" : each['campaign'],
-                        "ids" : [ each.get('id'), item.get('id') ]
-                    }
-                    superPublication["cites"] = filter(lambda v : v,superPublication["cites"]) # remove Nones
-                    superPublication["nr_children"] = 2
-                    sP_id = collection.insert(dict(superPublication))
-                    each['parent_id'] = sP_id
-                    item['parent_id'] = sP_id                        
-                print red("duplicate item: was detected!")
-                collection.update({"_id": each['_id']}, dict(each))
-                collection.insert(dict(item))
-                return item
-            # if we could not determine it was a duplicate we insert it         
-        collection.insert(dict(item))
-        print blue("item inserted")
+#        for each in collection.find({"parent_id" : {"$exists" : False}}) : # we don't get the children
+#            if each.get("title") and \
+#               item.get("title") and \
+#               rate_duplicates(each.get("title"), item.get("title"))  :
+#                    log.msg(rate_duplicates(each.get("title"), item.get("title")))
+#                    log.msg("found duplicate")
+#                                
+#                     # if it's a superPublication it already has nr_children attribute            
+#                    if 'nr_children' in each:
+#                        log.msg("already superPublication")                    
+#                        new_values={
+#                            "$push"     : { "children_ids"  : item['id']},
+#                            "$inc"      : { "times_cited"   : item.get('times_cited'),
+#                                            "nr_children"   : 1},
+#                            "$addToSet" : { "cites"         : item.get('cites'),
+#                                            "depths"        : item["depth_cb"]},
+#                            "$set"      : {}
+#                        }
+#                        if len(item.get('title') or "") > len(each.get("title") or "") :
+#                            new_values["$set"]["title"] = item['title']
+#                        if len(item.get('authors') or "") > len(each.get("authors") or "") :
+#                            new_values["$set"]["authors"] = item['authors']
+#                        
+#                        collection.update({"_id" : each["_id"]} , new_values)
+#                        item['parent_id'] = each['_id']
+#                        
+#                    # we have to create the superpublication    
+#                    else :
+#                        log.msg("create superpublication")
+#                        try :
+#                            superPublication={
+#                                "title"       : max([each.get('title') or "",item.get("title") or ""],key=len),
+#                                "authors"     : max([each.get('authors') or "",item.get("authors") or ""],key=len),
+#                                "times_cited" : (each.get('times_cited') or 0)+(item.get('times_cited') or 0),
+#                                "cites"       : [each.get('cites'),item.get('cites')],
+#                                "depths"      : list(set( each['depths'] + [ item['depth_cb'] ] )),
+#                                "campaign"    : each['campaign'],
+#                                "children_ids": [each.get('id'),item.get('id')]
+#                            }
+#                        except Exception as e:
+#                            log.msg(str(item))
+#                            log.msg(str(each))
+#                        log.msg(str(superPublication))
+#                        superPublication["cites"] = filter(lambda v : v,superPublication["cites"]) # remove Nones
+#                        log.msg("after filtring Nones")
+#                        log.msg(str(superPublication))
+#                        superPublication["nr_children"] = 2
+#                        sP_id = collection.insert(dict(superPublication))
+#                        collection.update({"_id": each['_id']}, { "$set" : {"parent_id" : sP_id} })
+#                        item['parent_id'] = sP_id                          
+        item_to_insert = dict(item)
+        item_to_insert['depths'] = [ item_to_insert['depth_cb'] ]
+        del item_to_insert['depth_cb']
+        collection.insert(item_to_insert)
+        log.msg("item inserted")
         return item
-
-
-
-def rate_duplicates(string1,string2) :
-	
-	def _clean(_str) :
-		_str=_str.encode("utf-8") if isinstance(_str,unicode) else _str
-		_str=_str.lower()
-		return _str
-	
-	string1=_clean(string1)
-	string2=_clean(string2)
-	
-	# inclusion test
-	if (string1 in string2 or string2 in string1) :
-		inclusion_rate=abs(len(string1)-len(string2))/float(len(string1)+len(string2))
-	else :
-		inclusion_rate=0
-	# levenshtein test
-	levenshtein_rate=Levenshtein.ratio(string1,string2)
-	
-	if inclusion_rate>0.4 :
-		# add 0.2 to level up to levenshtein rate
-		return inclusion_rate+0.2
-	elif levenshtein_rate>0.6 :
-		return levenshtein_rate
-	else :	
-		return None	
-   

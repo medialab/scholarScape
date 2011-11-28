@@ -7,7 +7,6 @@ from scholar.items import ScholarItem
 from scrapy.http import Request, FormRequest
 
 import copy
-import colorize
 
 from scrapy.utils.spider import iterate_spider_output
 from scrapy.contrib.spiders.init import InitSpider
@@ -216,8 +215,15 @@ class ScholarSpider(CrawlSpider): #depth first left to right
                 
                 #PUBLICATION TYPE (PDF,BOOK,HTML)
                 if p.select(pr.type_pub_xpath+ "/text()").extract():
-                    item['type_pub'] = p.select(pr.type_pub_xpath+ "/text()").extract()[0]
+                    item['type_pub'] = ( p.select(pr.type_pub_xpath+ "/text()").extract()[0]
+                                          .replace("[","")
+                                          .replace("]","")
+                                          .lower() )
                     item['title'] = item['title'].replace(item['type_pub'],"")
+                
+                if "[CITATION]" in item['title'] :
+                    item["title"] = item['title'].replace("[CITATION]","")
+                    item['type_pub'] = "citation"
                 
                 # LINK
                 if p.select(pr.href_xpath).extract() :    
@@ -238,10 +244,10 @@ class ScholarSpider(CrawlSpider): #depth first left to right
                 item['abstract'] = str.join("", p.select(pr.abstract_xpath +"//text()").extract() )
                 item['abstract'] = item['abstract'].replace(infos,"")
                 
-                infos = infos.split("-")
+                infos = infos.split(" - ")
                 
                 if len(infos)>1 :
-                    authors=re.sub(u"…","",infos[0])[0]
+                    item["authors"]=infos[0].split(", ")
                     infos=" ".join(infos[1:])
                     d=re.match("(.*?),? *(\d\d\d\d) *(.*)",infos)
                     if d : 
@@ -251,7 +257,7 @@ class ScholarSpider(CrawlSpider): #depth first left to right
                     else :                    
                         item['source']     = infos			
                 else :
-                    item['authors']=infos[0]
+                    item['authors']=infos[0].split(", ")
                 
                 item['project']  = self.project
                 item['campaign'] = self.campaign    

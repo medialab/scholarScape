@@ -1,0 +1,90 @@
+<script type="text/javascript" language="javascript" charset="utf-8">
+highlight_menu("explore");
+$.extend({
+  getUrlVars: function(){
+    var vars = [], hash;
+    var hashes = window.location.href.slice(window.location.href.indexOf('?') + 1).split('&');
+    for(var i = 0; i < hashes.length; i++)
+    {
+      hash = hashes[i].split('=');
+      vars.push(hash[0]);
+      vars[hash[0]] = hash[1];
+    }
+    return vars;
+  },
+  getUrlVar: function(name){
+    return $.getUrlVars()[name];
+  }
+});
+
+var dup_project = $.getUrlVar("project")
+var dup_campaign = $.getUrlVar("campaign")
+
+
+// <![CDATA[
+var NB_ITEMS_LIMIT = 20;
+
+$( function (e) {
+    $("span#dup_project").text(dup_project)
+    $("span#dup_campaign").text(dup_campaign)
+    $(".human_check").live("click", function (e) {
+        id = $(this).attr("id")
+        console.log(id)
+        if ( $(this).attr("value") == "True" )
+            human_check = true
+        else 
+            human_check = false
+        console.log(human_check)
+        call("duplicate_human_check", new Array(dup_project, dup_campaign, id, human_check) , function(data) {
+            console.log(JSON.parse(data))
+        });
+        $(this).parent().parent().hide(500)
+        $(this).parent().parent().remove()
+        nb_items--;
+        if ( nb_items  == 2 )
+            give_me_duplicates();
+            
+        $("#number_duplicates_already_checked").text(parseInt($("#number_duplicates_already_checked").text())+1)
+    });
+    console.log(dup_project, dup_campaign)
+    var give_me_duplicates = function () {
+        $("#infos_project").append("<tr id='ajaxloader'><td><img src='images/ajax-loader.gif'></td></tr>");
+        call("give_me_duplicates",new Array(dup_project, dup_campaign,NB_ITEMS_LIMIT),function(data) { // JSON RPC call to get info about the campaign unbundling in the project test_data
+            nb_items = NB_ITEMS_LIMIT;
+            window.data = JSON.parse(data)[0];
+            total_number_of_possible_duplicates = window.data[0]
+            number_duplicates_already_checked =  window.data[1]
+            $("#number_duplicates_already_checked").text(number_duplicates_already_checked)
+            $("#total_number_of_possible_duplicates").text(total_number_of_possible_duplicates)
+            for (var i=0; i< NB_ITEMS_LIMIT; i++ ) {
+              var duplicate = window.data[2][i]
+                  html = ""
+                  html += "<tr style='border:1px solid black'>"
+                  html += "<td>"+duplicate[0]+"</td><td>"+duplicate[1]+"</td><td>"+duplicate[2]+"</td><td>"
+                  html += "<button number='"+i+"' class='human_check' value='True' id='"+duplicate[3]+"'>ok</button>"
+                  html += "<button number='"+i+"' class='human_check' value='False' id='"+duplicate[3]+"'>no</button></td>"
+                  html += "</tr>"
+                  $("#infos_project").append(html)
+            }
+
+
+        });
+                    $("tr#ajaxloader").remove()
+
+    };
+    give_me_duplicates();
+});
+// ]]>
+</script>
+<h2>Human check for duplicates</h2>
+<h3><span id="dup_project"></span> - <span id="dup_campaign"></span></h3>
+<p>
+    scholarScape has calculated possible similarity between publications it has scraped.
+    Below are possible duplicates, you'll want to click on "OK" if the two are duplicates or on "No" if there aren't.
+</p>
+<p>
+    You have already checked <span id="number_duplicates_already_checked"></span> out of <span id="total_number_of_possible_duplicates"></span>.
+</p>
+<table id="infos_project" style="font-size:0.8em">
+<thead><th>Title 1</th><th>Title 2</th><th>Similarity</th></thead>
+</table>

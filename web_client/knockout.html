@@ -1,0 +1,14 @@
+<h2><span data-bind="text: name"></span></h2>
+<table>        
+    <tr><td>Date</td><td data-bind="text: date"></td></tr> <!-- Bind each td to the data it will contain-->
+    <tr><td>Download Delay</td><td data-bind="text: download_delay"></td></tr>
+    <tr><td>Depth</td><td data-bind="text: depth"></td></tr>
+    <tr><td>Status</td><td data-bind="text: status"></td></tr>
+</table>
+<script type="text/javascript" language="javascript" charset="utf-8">
+    call("monitor",new Array("test_data","unbundling"),function(data) { // JSON RPC call to get info about the campaign unbundling in the project test_data
+        data = JSON.parse(data)[0]['message']['campaign']; // parse response to JSON and select the intersting part
+        viewModel = ko.mapping.fromJS(data) // tell knockout to map every propriety of our object so that it becomes "observable" aka the UI change if the propriety change
+        ko.applyBindings(viewModel); // Makes Knockout get to work
+    });
+</script> 

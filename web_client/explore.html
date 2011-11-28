@@ -1,9 +1,9 @@
 <script type="text/javascript" language="javascript" charset="utf-8">
 // <![CDATA[
+    highlight_menu("explore");
     $( function () {
 
-    $dialog = $('#dialog_export_gexf')
-    .dialog({
+    $dialog = $('#dialog_export_gexf').dialog({
 	    autoOpen: false,
 	    modal : true,
 	    title: 'Max Depth ?'
@@ -14,6 +14,9 @@
         // prevent the default action, e.g., following a link
         return false;
     });
+    
+
+    
 });        
   
 // ]]>
@@ -72,6 +75,7 @@
             </p>
             <div id="start_urls" style="display:none; overflow:auto; padding:0.5em; font-size:0.8em">
             </div>
+            <a href="" id="check_duplicates">Check for duplicates</a>
         </div>
         <div id="infos_project" style="display:none">
             <h4 class="campaign_name"></h4>

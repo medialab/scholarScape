@@ -1,3 +1,4 @@
+
 li {
     list-style-type:square;
 }
@@ -6,7 +7,7 @@ li {
     list-style-type:none;
 }
 
-<!-- Sticky Footer-->
+/* Sticky Footer */
 html, body, #wrapper {height: 100%;}
 
 body > #wrapper { height: auto; min-height: 100%; }
@@ -28,6 +29,7 @@ body > #wrapper { height: auto; min-height: 100%; }
 /* must be same height as the footer */
 #container{ overflow: auto; padding-bottom: 80px; }
 
+
 /* Font faces */
 
 @font-face{
@@ -48,7 +50,7 @@ body > #wrapper { height: auto; min-height: 100%; }
 /* end font faces */
 
 html, body {
-	background: #9AD3EA url("../images/body_background.png") repeat-y -1px;
+	background: #53777a url("../images/body_background.png") repeat-y -1px;
 	font-family: titillium1;
 }
 
@@ -70,64 +72,59 @@ html, body {
 
 /* Menu */
 #menu{
-	background:black;
-	height:40px;
-	border:9px #9ad3ea solid;	
-	border-left:0;
-	border-right:0;
+	background:url("../images/menu_background.png");
+	height:54px;
+	border-top:9px transparent solid;
+
+    .menu_item{
+	    color:white;
+	    text-transform:uppercase;
+	    font-family:titillium400;
+	    font-size:10pt;
+	    text-align:center;
+    }
+    .menu_grey_flag_top, .menu_magenta_flag_top {
+	    width:100%;
+	    height:10px;
+	    position:absolute;
+	    top:-10px;	
+	    z-index:0;
+    }
+
+    .menu_grey_flag, .menu_magenta_flag{
+	    width:100%;
+	    height:400px;
+	    position:absolute;	
+	    top:38px;
+	    z-index:999;
+    }
+    .little {
+        background-position:bottom center !important;
+        height:30px ;
+    }
+    .menu_grey_flag       {	  background: #cdccce; height:17px;}
+    .menu_magenta_flag     {	  background: url("../images/magenta_flag.png") no-repeat top center; }
+    .menu_grey_flag_top    {    background: #cdccce;    }
+    .menu_magenta_flag_top {    background: url("../images/magenta_flag.png") no-repeat  center; }
+
+
+
+    a {
+        color:white;
+        text-decoration:none;
+        display:block;
+        padding-top:14px;
+        margin-left:4px;
+        margin-right:4px;
+        height:26px;
+        border-right:6px solid #000;
+    
+        &:hover {
+            background:#333;
+            border-color:#111;
+        }
+    }
 }
-
-#menu .menu_item{
-	color:white;
-	text-transform:uppercase;
-	font-family:titillium400;
-	font-size:10pt;
-	text-align:center;
-}
-
-
-#menu .menu_grey_flag_top, #menu .menu_magenta_flag_top {
-	width:100%;
-	height:10px;
-	position:absolute;
-	top:-10px;	
-	z-index:0;
-}
-
-#menu .menu_grey_flag, #menu .menu_magenta_flag{
-	width:100%;
-	height:400px;
-	position:absolute;	
-	top:38px;
-	z-index:999;
-}
-
-#menu .menu_grey_flag       {	  background: url("../images/grey_flag.png") no-repeat top center; }
-#menu .menu_magenta_flag     {	  background: url("../images/magenta_flag.png") no-repeat top center; }
-#menu .menu_grey_flag_top    {    background: url("../images/grey_flag.png") no-repeat center;    }
-#menu .menu_magenta_flag_top {    background: url("../images/magenta_flag.png") no-repeat center; }
-
-#menu .little {
-    background-position:bottom center !important;
-    height:40px !important;
-}
-
-#menu a {
-    color:white;
-    text-decoration:none;
-    display:block;
-    padding-top:14px;
-    margin-left:4px;
-    margin-right:4px;
-    height:26px;
-    border-right:6px solid #000;
-}
-
-#menu a:hover {
-    background:#333;
-    border-color:#111;
-}
-
 /* end menu */
 
 /* Forms */
@@ -135,8 +132,8 @@ input, textarea, select {
     margin-left:10px;
     font-size:1.5em;
     border:1px solid;
-        border:1px solid #9ad3ea;
-        background:white;
+    border:1px solid #9ad3ea;
+    background:white;
 
 }
 
@@ -194,12 +191,10 @@ a {
   color: #FF007D;
   font-family:titillium400;
   text-decoration:none;
-}
-
-a:hover {
+  &:hover {
     color: #3a52a4;
+  }
 }
-
 #get_started {
     color: #FF007D;
     font-family: titillium400;
@@ -212,23 +207,19 @@ a:hover {
 
 .description_project {
     font-size:0.8em;
+    h2 {
+	    text-transform: uppercase;
+	    font-size:1.2em;
+	    font-weight:bold;
+	    padding-bottom:0.3em;
+    }
 }
-
-.description_project h2 {
-	text-transform: uppercase;
-	font-size:1.2em;
-	font-weight:bold;
-	padding-bottom:0.3em;
-}
-
 #content {
     margin-top:3em;
+    h2, h3, h4, h5 {
+        font-family:titillium400;
+    } 
 }
-
-#content h2, #content h3, #content h4, #content h4 {
-    font-family:titillium400;
-} 
-
 
 #content h2 {
     font-size:2em;
@@ -356,5 +347,4 @@ em {
 }
 
 
-/* end index page
-
+/* end index page */

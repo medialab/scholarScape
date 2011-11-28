@@ -1,4 +1,3 @@
-<!DOCTYPE html>
 <html lang="en">
 <head>
 
@@ -13,13 +12,17 @@
 <link rel="stylesheet" type="text/css" href="css/jquery.qtip.min.css">
 <link rel="stylesheet" type="text/css" href="css/custom-theme/jquery-ui-1.8.16.custom.css">
 <link rel="stylesheet" type="text/css" href="css/grid.css">
-<link rel="stylesheet" type="text/css" href="css/style.css">
+<link rel="stylesheet/less" type="text/css" href="css/style.less">
 
+<script src="js/less-1.1.5.min.js" type="text/javascript"></script>
 <script src="js/jquery-1.7.min.js" type="text/javascript" language="javascript" charset="utf-8"></script>
 <script src="js/jquery.validate.min.js" type="text/javascript" language="javascript" charset="utf-8"></script>
 <script src="js/forms.js" type="text/javascript" language="javascript" charset="utf-8"></script>
 <script src="js/jquery-ui-1.8.16.custom.min.js" type="text/javascript" language="javascript" charset="utf-8"></script>
 <script src="js/jquery.qtip.min.js" type="text/javascript" language="javascript" charset="utf-8"></script>
+<script type='text/javascript' src='js/jquery.tmpl.js'></script>
+<script type='text/javascript' src='js/knockout-1.2.1.js'></script>
+<script type='text/javascript' src='js/knockout.mapping-latest.js'></script>
 <!--[if lte IE 7]>
 <link rel="stylesheet" href="css/ie.css" />
 <![endif]-->
@@ -38,29 +41,27 @@
 <body>
 <script type="text/javascript" language="javascript" charset="utf-8">
 // <![CDATA[
-    $(function () {
-        urlvars = getUrlVars();
-        if ( urlvars["page"] == "index" || urlvars["page"] == undefined) {
-            $(".menu_item:not(#help)").append('<div class="menu_magenta_flag"></div><div class="menu_magenta_flag_top"></div>');
-            $("#help").append('<div class="menu_grey_flag little"></div><div class="menu_grey_flag_top"></div>');
-        }
-        else {
-            $(".menu_item:not(#"+urlvars['page']+")").append('<div class="menu_grey_flag little"></div><div class="menu_grey_flag_top"></div>');
-            $("#" + urlvars['page']).append('<div class="menu_magenta_flag little"></div><div class="menu_magenta_flag_top"></div>');
-        }
-    });
+    var highlight_menu = function(name) {
+        $(".menu_item:not(#"+name+")").append('<div class="menu_grey_flag little"></div><div class="menu_grey_flag_top"></div>');
+        $("#" + name).append('<div class="menu_magenta_flag little"></div><div class="menu_magenta_flag_top"></div>');
+    }
+    
+    var highlight_index = function(name) {
+        $(".menu_item:not(#tutorial)").append('<div class="menu_magenta_flag"></div><div class="menu_magenta_flag_top"></div>');
+        $("#tutorial").append('<div class="menu_grey_flag little"></div><div class="menu_grey_flag_top"></div>');
+    }
 // ]]>
 </script>
 <div class="result"></div>
 <div id="wrapper">
-   <a href="?page=index"><img src="images/ghost.png" id="logo"/></a>
-  <div id="container" class="container_14">
 
+  <div id="container" class="container_14">
+   <a href="?page=index"><img src="images/ghost.png" id="logo"/></a>
     <div class="grid_11">
         <div id="menu">
 		    <div class="menu_item alpha grid_2 push_1" id="launch"><a href="?page=launch">launch</a></div>  
 		    <div class="menu_item grid_2 push_1" id="explore"><a href="?page=explore">explore</a></div>    
-		    <div id="help" class="menu_item grid_2 push_1" id="help"><a href="?page=tutorial">help</a></div>    
+		    <div class="menu_item grid_2 push_1" id="tutorial"><a href="?page=tutorial">help</a></div>    
         </div>
     
         <div id="content" class="grid_9 prefix_1  suffix_1 alpha omega">

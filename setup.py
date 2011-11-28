@@ -1,5 +1,4 @@
 # This setup file is heavily inspired from the one from Scrapy 
-# LICENSE S
 
 from distutils.core import setup
 import os
