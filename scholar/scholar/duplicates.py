@@ -82,7 +82,7 @@ def remove_duplicates(db, project, campaign) :
     def calculate_dup_scores() :
         logging.info("Calculating duplicates ratio")
         dup_col.remove({})
-        dup_col.drop_index("title_score") # for fast insertion
+        dup_col.drop_indexes() # for fast insertion
         publications = col.find({"download_delay" : {"$exists" : False}, "campaign" : campaign})
         total_nr_pairs = binomial(col.find({"download_delay" : {"$exists" : False}, "campaign" : campaign }).count(),2)
         
@@ -104,7 +104,7 @@ def remove_duplicates(db, project, campaign) :
                 "author_score" : author_score
             })
         
-        dup_col.ensure_index("title_score") # for fast querying
+        dup_col.ensure_index([("title_score",1), ("human_say",1)]) # for fast querying
 
     def find_and_merge_duplicates() :
         t1 = time.clock()
