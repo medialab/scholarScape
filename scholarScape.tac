@@ -1,4 +1,4 @@
-import json, networkx as nx, os, pystache, pprint, shlex, subprocess, urllib2, zipfile
+import json, networkx as nx, os, pystache, pprint, shlex, subprocess, urllib, urllib2, zipfile
 
 from twisted.application import service, internet
 from twisted.python import log
