@@ -1,36 +1,19 @@
-from twisted.web import server
+import json, networkx as nx, os, pystache, pprint, shlex, subprocess, urllib2, zipfile
+
 from twisted.application import service, internet
-from txjsonrpc.web import jsonrpc
 from twisted.python import log
-from twisted.python.log import ILogObserver, FileLogObserver
-from twisted.python.logfile import DailyLogFile
+from twisted.web import server
 from twisted.web import resource
 from twisted.web.static import File
-
-import getpass
-import json
-from pymongo import Connection
-import argparse
-import pprint 
-import json
-from pymongo import Connection
-import shlex, subprocess
-import zipfile
-import urllib
-import urllib2
-from datetime import date
 from twisted.web import static
-import networkx as nx
-from random import getrandbits
-import inspect
-from urllib import quote_plus as qp
-import os
-import pystache
+from txjsonrpc.web import jsonrpc
+
 from contextlib import nested
-import subprocess as sub
+from datetime import date
+from pymongo import Connection, objectid
 from pymongo.errors import AutoReconnect
-import test
-from pymongo import objectid
+from random import getrandbits
+from urllib import quote_plus as qp
 
 # Read config file and fill in mongo and scrapyd config files with custom values
 # try to connect to DB, send egg to scrapyd server
@@ -62,7 +45,7 @@ try :
         generated.write(pystache.render(template.read(), config['mongo']))
 except IOError as e:
     print "Could not open either pipeline-template file or pipeline file"
-    #TODO noms des ficheirs a printer
+    print "scholar/scholar/pipelines-template.py", "scholar/scholar/pipelines.py"
     print e
     exit() 
 
@@ -73,13 +56,14 @@ try :
         generated.write(pystache.render(template.read(), config['scrapyd']))
 except IOError as e:
     print "Could not open either scrapy.cfg template file or scrapy.cfg"
+    print "scholar/scrapy-template.cfg", "scholar/scrapy.cfg"
     print e
     exit() 
 
 # Deploy the egg     
 print "Sending scholarScrape's scrapy egg to scrapyd server..."
 os.chdir("scholar")
-p = sub.Popen(['scrapy','deploy'], stdout=sub.PIPE, stderr=sub.PIPE)
+p = subprocess.Popen(['scrapy','deploy'], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 output, errors = p.communicate()
 print output, errors
 try :
@@ -275,6 +259,7 @@ class scholarScape(jsonrpc.JSONRPC):
             return dict(code = "fail", message = "Already existing campaign : campaign could not be created")     
         
         def scholarize_custom(x):
+            """method to return GS urls based on the choice of the user"""
             kwargs = dict()
             
             if exact and search_type == "titles" :
@@ -287,6 +272,7 @@ class scholarScape(jsonrpc.JSONRPC):
             if search_type == "authors" :   return scholarize(author=x)
             if search_type == "urls"    :   return x
 
+        # preparation of the request to scrapyd
         url = 'http://%s:%s/schedule.json' % (config['scrapyd']['host'], config['scrapyd']['port']) 
         values = [
               ("project" , "scholar"),
@@ -300,17 +286,21 @@ class scholarScape(jsonrpc.JSONRPC):
         
         data = urllib.urlencode(values)
         req = urllib2.Request(url, data)
+        
+        # sending request
         try :
             response = urllib2.urlopen(req)
         except urllib2.URLError as e:
             result = dict(code = "fail", message = "Could not contact scrapyd server, maybe it's not started...")
             return result
         
+        # reading the response
         results = json.loads(response.read())
         print results
         if results['status'] == "ok":
             result = dict(code = "ok", message = "The crawling campaign was successfully launched. You can see it in the Explore section.\n")
             result['job_id'] = str(results["jobid"])
+            # creation of the campaign object in the DB
             campaign =  {
                         "name" : campaign,
                         "date" : str(date.today()),
@@ -405,10 +395,18 @@ class scholarScape(jsonrpc.JSONRPC):
         return filename
     
     #TODO TODO TODO
-    def jsonrpc_export_json(self,project_name) :
+    def jsonrpc_export_json(self, project, campaign) :
         print "Dumping database..."
-        filename = os.path.join(os.path.dirname(__file__), data_dir, "json", project_name + str(getrandbits(128)) + ".json" )
-        export_command = str('mongoexport -h "' + config["mongo"]["host"] + '" -d "' + config["mongo"]["database"] + '" -c "' + project_name + '" -o ' + filename)
+        if campaign == "*" : campaign = ""
+        filename = os.path.join(os.path.dirname(__file__), data_dir, "json", project + "-" + campaign + str(getrandbits(128)) + ".json" )
+        export_command = str('mongoexport -h "' + config["mongo"]["host"] + '" -d "' + config["mongo"]["database"] + '" -c "' + project + '" -o ' + filename)
+        if campaign :
+            query = {"$or" : [ 
+                        {"campaign" : campaign, "download_delay" : {"$exists" : False}}, 
+                        {"name" : campaign, "download_delay" : {"$exists" : True} }
+                      ]
+                    } 
+            export_command += '-q "' + str(query) + '"'
         print export_command
         args = shlex.split(export_command)
         p = subprocess.call(args)
@@ -416,7 +414,6 @@ class scholarScape(jsonrpc.JSONRPC):
         return filename
         
     def jsonrpc_export_zip(self,project_name) :
-        print inspect.getmembers(self)
         json_file = self.jsonrpc_export_json(project_name)
         gexf_file = self.jsonrpc_export_gexf(project_name)
 

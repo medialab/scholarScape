@@ -123,7 +123,14 @@ update_infos_campaign = function(e) {
         campaign = $(this).text()
         console.log(project, "/", campaign)
         update_infos_campaign_interval(project,campaign);
-        refreshInfos = setInterval(function () { console.log("updated"); update_infos_campaign_interval(project, campaign); }, 5000)
+        if ( window.campaign != "*" )  {
+            refreshInfos = setInterval(function () { console.log("updated"); update_infos_campaign_interval(project, campaign); }, 5000)
+            console.log(window.campaign)
+        }
+        else {
+            console.log("salut")
+            clearInterval(refreshInfos);
+        }
      }
 }
 
@@ -304,17 +311,15 @@ update_list_project = function () {
         }) 
     });
     
-    $("#submit_e_json").bind('click', function (e) { 
+    $("#button_e_json").bind('click', function (e) { 
         e.preventDefault();
-        if ($("#export_form").valid()) {
            // jsonrpc_startproject(project, campaign, start_urls, download_delay=30, depth=1):
-            var project        = $("#e_p").val();
-            call("export_json",new Array(project), function (data) {
+            call("export_json",new Array(project, campaign), function (data) {
                 $("a").remove(":contains('Download Json')"); 
-                $("#export_form fieldset").append("<a href='downloader?file="+JSON.parse(data)[0]+"' title='Download JSON'>Download Json</a>")
+                ghost_print("Download the dump <a href='downloader?file="+JSON.parse(data)[0]+"' title='Download JSON'>Download Json</a>")
             })
              
-        }  
+    
     });
     $("#submit_e_zip").bind('click', function (e) { 
         e.preventDefault();
