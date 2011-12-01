@@ -24,7 +24,7 @@ var call = function (method, params, callback){
 				    callback(rpc_xhr.responseText);
 			    }
 		    }
-		    rpc_xhr.open("POST", SERVER_ADRESS+"/json", true);
+		    rpc_xhr.open("POST", SERVER_ADRESS+"json", true);
 		    rpc_xhr.setRequestHeader("Content-Type", "application/x-www-form-urlencoded");
 		    rpc_xhr.send(query);
 		    console.log(query)
