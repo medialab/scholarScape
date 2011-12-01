@@ -21,7 +21,7 @@ Dependencies
 How to install scholarScape
 ===========================
 
-The first two steps (starred one) are designed for a Debian based distribution as they involve installing packages (MongoDB and Scrapy) with apt-get. However MongoDB has a package in other distributions and you can install Scrapy from the sources. See in the "Read More" section the links to the install pages of these softwares.
+The first two steps (starred ones) are designed for a Debian based distribution as they involve installing packages (MongoDB and Scrapy) with apt-get. However MongoDB has a package in other distributions and you can install Scrapy from the sources. See in the "Read More" section the links to the install pages of these softwares.
  
 The last steps should not be specific to any version of Linux.
 
@@ -44,11 +44,11 @@ and after ::
 
 You can now install all the dependencies scholarScape relies upon. It is recommended to install ``virtualenv`` to set up a virtual environment in order not to disturb other programs. ::
 
-    sudo apt-get install python-dev bzr mongodb-10gen scrapyd-0.15 git
-    easy_install virtualenv
-    easy_install scrapy 
-    easy_install pymongo 
-    easy_install pystache
+    sudo apt-get install python-dev bzr mongodb-10gen scrapyd-0.15 git-core
+    sudo easy_install virtualenv
+    sudo easy_install scrapy 
+    sudo easy_install pymongo 
+    sudo easy_install pystache
 
     bzr branch lp:txjsonrpc
     cd txjsonrpc
