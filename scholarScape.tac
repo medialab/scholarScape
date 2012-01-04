@@ -458,6 +458,9 @@ class scholarScape(jsonrpc.JSONRPC):
     def jsonrpc_remove_project(self,project_name) :
         try : 
             db.drop_collection(project_name)
+            for name in db.collection_names(): 
+                if name.startswith("__dup__" + project_name + "-") :
+                    db.drop_collection(name) 
             return {"code":"ok","message" : "Project " + project_name + " was deleted successfully"}
         except Exception as e:
             return {"code" : "fail", "message" : str(e)}            

@@ -70,7 +70,6 @@ def rate_duplicates(pub1,pub2) :
             if pair[0] in pair[1] or pair[1] in pair[0]:
                 author_score=1
                 return title_score, author_score
-                break
                 
     return title_score, None
 
@@ -97,12 +96,13 @@ def remove_duplicates(db, project, campaign) :
                 advance = percentage
                 logging.info("%i : %i" % (advance, time.clock()-t1))
             title_score, author_score = rate_duplicates(pairs[0], pairs[1])
-            dup_scores.append({   # preparation of bulk insert
-                "_id1" : pairs[0]["_id"], 
-                "_id2" : pairs[1]["_id"],
-                "title_score" :  title_score,
-                "author_score" : author_score
-            })
+            if title_score :
+                dup_scores.append({   # preparation of bulk insert
+                    "_id1" : pairs[0]["_id"], 
+                    "_id2" : pairs[1]["_id"],
+                    "title_score" :  title_score,
+                    "author_score" : author_score
+                })
         
         dup_col.ensure_index([("title_score",1), ("human_say",1)]) # for fast querying
 

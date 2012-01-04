@@ -125,7 +125,7 @@ class ScholarSpider(CrawlSpider): #depth first left to right
     allowed_domains = ['accounts.google.com','scholar.google.com']
    
     nr_results_per_page = "10"
-    query              = qp("ultrasound cortical bone")     # with all of the words
+    query              = qp("")     # with all of the words
     exact              = qp("")                             # with the exact phrase
     at_least_one       = qp("")                             # with at least one of the words
     without            = qp("")                             # without the words
@@ -135,7 +135,7 @@ class ScholarSpider(CrawlSpider): #depth first left to right
     start_date         = qp("")                             # Return articles published between	this date ..
     end_date           = qp("")                             # ..and this date
     areas              = [                                 #Search only articles in the following subject areas
-             "bio",  #  Biology, Life Sciences, and Environmental Science	            
+             #"bio",  #  Biology, Life Sciences, and Environmental Science	            
              #"med", #  Medicine, Pharmacology, and Veterinary Science       
              #"bus", #  Business, Administration, Finance, and Economics
              #"phy", #  Physics, Astronomy, and Planetary Science
