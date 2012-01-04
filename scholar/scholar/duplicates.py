@@ -60,15 +60,14 @@ def rate_duplicates(pub1,pub2) :
     else :    
         return (None, None)
 
+    # authors test : score = 1 if one author is common (i.e. inclusion test), none otherwise
     if pub1.get("authors") and pub2.get("authors") :
         authors1 = map(_clean, pub1["authors"])
         authors2 = map(_clean, pub2["authors"])
         
-        author_score = 0
-        
         for pair in product(authors1, authors2) :
             if pair[0] in pair[1] or pair[1] in pair[0]:
-                author_score=1
+                author_score = 1
                 return title_score, author_score
                 
     return title_score, None
