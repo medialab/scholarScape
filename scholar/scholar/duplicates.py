@@ -61,6 +61,7 @@ def rate_duplicates(pub1,pub2) :
         return (None, None)
 
     # authors test : score = 1 if one author is common (i.e. inclusion test), none otherwise
+    # actually not used in the duplicates calculation because not sure about the test
     if pub1.get("authors") and pub2.get("authors") :
         authors1 = map(_clean, pub1["authors"])
         authors2 = map(_clean, pub2["authors"])
