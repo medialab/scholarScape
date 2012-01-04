@@ -2,6 +2,17 @@
 scholarScape
 ************
 
+Disclaimer
+==========
+
+Google Scholar™'s Terms of Service explicitly forbids to use robots to automatically retrieve
+data from its servers. We do not condone, promote or tolerate the use of our 
+software for illegal purposes and cannot be held responsible for what you might
+do with it.
+We publish it for research purpose only and peer-review.
+Don't be evil.
+
+
 Description
 ===========
 
