@@ -97,7 +97,7 @@ class Home(resource.Resource):
  
     def render_GET(self, request):
         request.setHeader("Content-Type", "text/html; charset=utf-8")
-        if "page" in request.args:
+        if "page" in request.args and request.args["page"][0] != "layout":
             path = os.path.join(web_client_dir, "%s.html" % request.args['page'][0])
             path = path if os.path.exists(path) else  os.path.join(web_client_dir, "404.html")
         else :
