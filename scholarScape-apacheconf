@@ -8,6 +8,8 @@ ProxyRequests Off
 </Proxy>
 
 <Location /scholarScape/>
-        ProxyPass http://lrrr:6969/
-        ProxyPassReverse http://lrrr:6969/
+# you might have to change localhost and 6969 port according to the host condifugation of the twisted server
+# have a look in config.json on scholarscape root directory:
+        ProxyPass http://localhost:6969/
+        ProxyPassReverse http://localhost:6969/
 </Location>
