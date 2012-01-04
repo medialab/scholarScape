@@ -1,0 +1,13 @@
+ProxyRequests Off
+
+<Proxy *>
+        Options +FollowSymLinks
+        AllowOverride All
+        order allow,deny
+        allow from all
+</Proxy>
+
+<Location /scholarScape/>
+        ProxyPass http://lrrr:6969/
+        ProxyPassReverse http://lrrr:6969/
+</Location>

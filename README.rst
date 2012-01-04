@@ -99,6 +99,20 @@ Now you can launch the scholarScape server. Go to the source directory and execu
 
 You can omit the parameter "n" if you want to start the server as a daemon.
 
+Setup Apache
+------------
+
+If you want your server to be available from outside, you can setup a reverse proxy 
+in apache. People then will be allowed to access scholarScape on `localhost/scholarScape`.
+
+The file is named scholarScape-apache.conf.
+
+You can use it by doing ::
+
+    sudo cp scholarScape-apache.conf /etc/apache2/sites-available/scholarScape
+    sudo ln -s /etc/apache2/sites-available/scholarScape /etc/apache2/sites-enabled/scholarScape
+
+
 Usage
 =====
 After the installation you'll want to type in ``localhost:TWISTED_PORT`` in your
