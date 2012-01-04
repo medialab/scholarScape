@@ -102,16 +102,20 @@ You can omit the parameter "n" if you want to start the server as a daemon.
 Setup Apache
 ------------
 
-If you want your server to be available from outside, you can setup a reverse proxy 
-in apache. People then will be allowed to access scholarScape on `localhost/scholarScape`.
+Usually other ports than 80 are not available from outside. If you want your server to
+ be available from outside, you can setup a reverse proxy in Apache. 
+People then will be allowed to access scholarScape on `localhost/scholarScape` instead
+of accessing on localhost
 
 The file is named scholarScape-apache.conf.
 
 You can use it by doing ::
 
     sudo cp scholarScape-apache.conf /etc/apache2/sites-available/scholarScape
-    sudo ln -s /etc/apache2/sites-available/scholarScape /etc/apache2/sites-enabled/scholarScape
-
+    sudo a2ensite scholarScape
+    
+You may want to change the port used in this file if you changed the default port in
+scholarScape's config.
 
 Usage
 =====
