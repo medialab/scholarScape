@@ -21,7 +21,7 @@ from scrapy.utils.url import urljoin_rfc
 
 from urllib import quote_plus as qp
 import json
-
+from urlparse import urlparse
 
 class ParsingRules :
 	
@@ -69,6 +69,13 @@ class ScholarSpider(CrawlSpider): #depth first left to right
             self.project = kw['project_name']
         if 'campaign_name' in kw:
             self.campaign = kw['campaign_name']
+        
+        # max page starts is the number of starting points maximum for a given
+        # query
+        # max page cites is the number maximum of cited by publications which
+        # will be retrieved for a single publication
+        self.max_pages_starts = kw["max_pages_starts"] if 'max_pages' in kw else 100
+        self.max_pages_cites = kw["max_pages_cites"] if 'max_pages' in kw else 100
     
     def make_requests_from_url(self, url):
         req = super(ScholarSpider, self).make_requests_from_url(url)
@@ -201,6 +208,15 @@ class ScholarSpider(CrawlSpider): #depth first left to right
         return self.parse_items(response)
 
     def parse_items(self, response):  
+        url = urlparse(response.url)
+        params = dict([part.split('=') for part in url[4].split('&')])
+
+        if self.max_pages_starts and params.get("start") > self.max_pages_starts and "cites" not in params:
+            return []
+         
+        if self.max_pages_cites and params.get("start") > self.max_pages_cites and "cites" in params:
+            return []
+            
         hxs = HtmlXPathSelector(response)
         pr = ParsingRules()
         publications = hxs.select(pr.item_xpath)
