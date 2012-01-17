@@ -211,16 +211,23 @@ class ScholarSpider(CrawlSpider): #depth first left to right
         url = urlparse(response.url)
         params = dict([part.split('=') for part in url[4].split('&')])
 
+        self.log("heyehye")
         if self.max_pages_starts and params.get("start") > self.max_pages_starts and "cites" not in params:
+            self.log("number of maximal start pages exceeded")
+            self.log("%s %s %s %s" % (self.max_pages_starts, self.max_pages_cites, ", ".join(params), params.get("start")))
             return []
          
         if self.max_pages_cites and params.get("start") > self.max_pages_cites and "cites" in params:
+            self.log("number of maximal cites documents exceeded")
+            self.log("%s %s %s %s" % (self.max_pages_starts, self.max_pages_cites, ", ".join(params), params.get("start")))
             return []
-            
+        
+        self.log("heyehye")
         hxs = HtmlXPathSelector(response)
         pr = ParsingRules()
         publications = hxs.select(pr.item_xpath)
         items_or_requests = []
+        self.log("%s " % len(publications))
         for p in publications:
             item = ScholarItem()
         
