@@ -9,9 +9,7 @@ Google Scholar™'s Terms of Service explicitly forbids to use robots to automat
 data from its servers. We do not condone, promote or tolerate the use of our 
 software for illegal purposes and cannot be held responsible for what you might
 do with it.
-
 We publish it for research purpose only and peer-review.
-
 Don't be evil.
 
 
@@ -116,8 +114,7 @@ Setup Apache
 ------------
 
 Usually other ports than 80 are not available from outside. If you want your server to
-be available from outside, you can setup a reverse proxy in Apache. 
-
+ be available from outside, you can setup a reverse proxy in Apache. 
 People then will be allowed to access scholarScape on `localhost/scholarScape` instead
 of accessing on localhost
 
