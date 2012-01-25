@@ -250,7 +250,7 @@ class scholarScape(jsonrpc.JSONRPC):
             projects.append([collection_name,sorted(campaigns,key=lambda x:x['name'])])
         return sorted(projects,key=lambda x:x[0])
         
-    def jsonrpc_start_campaign(self, project, campaign, search_type, starts, download_delay=30, depth=1, exact=False):
+    def jsonrpc_start_campaign(self, project, campaign, search_type, starts, download_delay=30, depth=1, max_start_pages=100, max_cites_pages=100, exact=False):
         """
         JSON-RPC method to start a campaign.
         """
@@ -270,7 +270,7 @@ class scholarScape(jsonrpc.JSONRPC):
             if search_type == "words"  :    return scholarize(query=x)
             if search_type == "titles"  :   return scholarize(query=x, where_words_occurs='title')
             if search_type == "authors" :   return scholarize(author=x)
-            if search_type == "urls"    :   return x
+            if search_type == "urls"    :   return x + "&num=100"
 
         # preparation of the request to scrapyd
         url = 'http://%s:%s/schedule.json' % (config['scrapyd']['host'], config['scrapyd']['port']) 
@@ -281,6 +281,8 @@ class scholarScape(jsonrpc.JSONRPC):
               ('setting' , 'DOWNLOAD_DELAY=' + str(download_delay)) ,
               ('setting' , 'DEPTH_LIMIT=' + str(depth)) ,
               ('campaign_name' , campaign),  
+              ('max_start_pages' , max_start_pages),  
+              ('max_cites_pages' , max_cites_pages),  
               ('start_urls_' , str.join(";", [scholarize_custom(start) for start in filter(lambda x : x, starts)])),  
         ]
         
@@ -315,7 +317,31 @@ class scholarScape(jsonrpc.JSONRPC):
         else :
             result = dict(code = "fail", message = "There was an error telling scrapyd to launch campaign crawl")
             return result
-            
+    
+    def jsonrpc_cancel_campaign(self, project_name, campaign):
+        collection = db[project_name]
+        job_id = collection.find_one({ "name" : campaign })["job_id"]
+        url = 'http://%s:%s/cancel.json' % (config['scrapyd']['host'], config['scrapyd']['port']) 
+        values = [
+              ("project" , "scholar"),
+              ('job' , job_id),
+        ]
+        
+        data = urllib.urlencode(values)
+        req = urllib2.Request(url, data)
+        
+        # sending request
+        try :
+            response = urllib2.urlopen(req)
+        except urllib2.URLError as e:
+            result = dict(code = "fail", message = "Could not contact scrapyd server, maybe it's not started...")
+            return result
+        
+        collection.update( {"download_delay" : {"$exists" : True}, "name" : campaign}, {"$set" : {"status" : "finished"}})
+        # reading the response
+        results = json.loads(response.read())
+        return results
+    
     def jsonrpc_export_gexf(self, project_name, campaign,max_depth=None):
         """JSON-RPC method to export a graph from a particular project/campaign."""
         g = nx.Graph()

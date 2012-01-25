@@ -87,14 +87,9 @@ def remove_duplicates(db, project, campaign) :
         
         advance = 0
         dup_scores = []
-        
+        myprint(len(publications))
         for i, pairs in enumerate(combinations(publications,2)):
             percentage = math.floor( float(i)/float(total_nr_pairs)*100 )
-            if percentage > advance:
-                dup_col.insert(dup_scores) #bulk insert to gain perf
-                dup_scores = []
-                advance = percentage
-                logging.info("%i : %i" % (advance, time.clock()-t1))
             title_score, author_score = rate_duplicates(pairs[0], pairs[1])
             if title_score :
                 dup_scores.append({   # preparation of bulk insert
@@ -103,7 +98,12 @@ def remove_duplicates(db, project, campaign) :
                     "title_score" :  title_score,
                     "author_score" : author_score
                 })
-        
+            if percentage > advance:
+                dup_col.insert(dup_scores) #bulk insert to gain perf
+                dup_scores = []
+                advance = percentage
+                logging.info("%i : %i" % (advance, time.clock()-t1))
+                
         dup_col.ensure_index([("title_score",1), ("human_say",1)]) # for fast querying
 
     def find_and_merge_duplicates() :

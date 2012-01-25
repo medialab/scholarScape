@@ -86,14 +86,29 @@
             <td><label for="c_d">Depth :</label></td>
             <td><input id="c_d" type="text" size="1" name="depth" value="2" class="required number"/></td>
         </tr>
-        <tr>
-<!--            <td><label for="c_dd">Download delay :</label></td>-->
-            <td><input id="c_dd" size="2" type="hidden" name="download_delay" value="30" class="required number" /></td>
+        <tr class="advanced">
+            <td><label for="c_dd">Download delay :</label></td>
+            <td><input id="c_dd" size="2" type="text" name="download_delay" value="30" class="required number" /></td>
         </tr>
+        <tr class="advanced">
+            <td><label for="c_msp">Max start pages:</label></td>
+            <td><input id="c_msp" size="3" type="text" name="max_start_pages" value="100" class="required number" /></td>
+        </tr>
+        <tr class="advanced">
+            <td><label for="c_mcp">Max cites pages</label></td>
+            <td><input id="c_mcp" size="3" type="text" name="max_cites_pages" value="100" class="required number" /></td>
+
         </table>
         <p style="text-align:center">
             <input type="submit" id="submit_c" value="Start the crawl!">
         </p>
 </fieldset>
 </form>
-
+<button id="show_advanced">show/hide advanced</button>
+        </tr>
+        <script type="text/javascript">
+                $(".advanced").toggle()
+                $("#show_advanced").click(function() {
+                    $(".advanced").toggle()
+                });
+        </script>

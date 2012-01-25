@@ -23,17 +23,20 @@ from urllib import quote_plus as qp
 import json
 from urlparse import urlparse
 
+from scrapy.utils.url import urljoin_rfc 
+from scrapy.utils.response import get_base_url 
+
 class ParsingRules :
 	
 	# result item 
 	item_xpath="//div[@class ='gs_r']"
  
  	#inside item
- 	title_xpath="div[@class ='gs_rt']/h3" 	    # title  (anchor element)
- 	href_xpath="div[@class ='gs_rt']/h3/a/@href" 	# document href
-	info_xpath="font/*[@class ='gs_a']" 	        # author, year and publisher 
- 	cited_by_xpath=".//span[@class ='gs_fl']/a[1]"  
- 	abstract_xpath = "font"
+ 	title_xpath="h3[@class ='gs_rt']" 	    # title  (anchor element)
+ 	href_xpath="h3[@class ='gs_rt']/a/@href" 	# document href
+	info_xpath="div[@class ='gs_a']" 	        # author, year and publisher 
+ 	cited_by_xpath=".//div[@class ='gs_fl']/a[1]"  
+ 	abstract_xpath = "div[@class='gs_rs']"
  	type_pub_xpath = ".//span[@class='gs_ctc']"     # [PDF], [BOOK], [HTML] etc..
  	bibtex_path = "font//span[@class ='gs_fl']/a[last()]/@href"
 
@@ -74,8 +77,8 @@ class ScholarSpider(CrawlSpider): #depth first left to right
         # query
         # max page cites is the number maximum of cited by publications which
         # will be retrieved for a single publication
-        self.max_pages_starts = kw["max_pages_starts"] if 'max_pages' in kw else 100
-        self.max_pages_cites = kw["max_pages_cites"] if 'max_pages' in kw else 100
+        self.max_start_pages = int(kw["max_start_pages"]) if 'max_start_pages' in kw else 100
+        self.max_cites_pages = int(kw["max_cites_pages"]) if 'max_cites_pages' in kw else 100
     
     def make_requests_from_url(self, url):
         req = super(ScholarSpider, self).make_requests_from_url(url)
@@ -171,13 +174,6 @@ class ScholarSpider(CrawlSpider): #depth first left to right
 
 
     rules = (
-        Rule(
-            SgmlLinkExtractor(
-                allow=r'.*cites=.*',
-                restrict_xpaths="//div[@class ='gs_r']/font//a",
-            ),  
-            callback='parse_items', 
-            follow=True),
         ScholarRule(
             SgmlLinkExtractor(
                 allow=[],
@@ -211,26 +207,38 @@ class ScholarSpider(CrawlSpider): #depth first left to right
         url = urlparse(response.url)
         params = dict([part.split('=') for part in url[4].split('&')])
 
-        self.log("heyehye")
-        if self.max_pages_starts and params.get("start") > self.max_pages_starts and "cites" not in params:
+
+
+        if self.max_start_pages and params.get("start") > self.max_start_pages and "cites" not in params:
             self.log("number of maximal start pages exceeded")
-            self.log("%s %s %s %s" % (self.max_pages_starts, self.max_pages_cites, ", ".join(params), params.get("start")))
+            self.log("%s %s %s %s" % (self.max_start_pages, self.max_cites_pages, ", ".join(params), params.get("start")))
             return []
          
-        if self.max_pages_cites and params.get("start") > self.max_pages_cites and "cites" in params:
+        if self.max_cites_pages and params.get("start") > self.max_cites_pages and "cites" in params:
             self.log("number of maximal cites documents exceeded")
-            self.log("%s %s %s %s" % (self.max_pages_starts, self.max_pages_cites, ", ".join(params), params.get("start")))
+            self.log("%s %s %s %s" % (self.max_start_pages, self.max_cites_pages, ", ".join(params), params.get("start")))
             return []
         
-        self.log("heyehye")
         hxs = HtmlXPathSelector(response)
         pr = ParsingRules()
         publications = hxs.select(pr.item_xpath)
-        items_or_requests = []
-        self.log("%s " % len(publications))
-        for p in publications:
-            item = ScholarItem()
+        items, requests = [], []
+        for i, p in enumerate(publications):
         
+            self.log("msp : %i, current number : %i " % (self.max_start_pages, (params.get("start") or 0) + i))
+        
+        
+            if self.max_start_pages and (params.get("start") or 0) + i + 1 > self.max_start_pages and "cites" not in params:
+                self.log("number of maximal start pages exceeded")
+                self.log("%s %s %s %s" % (self.max_start_pages, self.max_cites_pages, ", ".join(params), params.get("start")))
+                break
+             
+            if self.max_cites_pages and (params.get("start") or 0) + i + 1 > self.max_cites_pages and "cites" in params:
+                self.log("number of maximal cites documents exceeded")
+                self.log("%s %s %s %s" % (self.max_start_pages, self.max_cites_pages, ", ".join(params), params.get("start")))
+                break
+            
+            item = ScholarItem()
             #TITLE
             if p.select(pr.title_xpath  + "//text()").extract():
                 item['title'] = str.join("", p.select(pr.title_xpath  + "//text()").extract())
@@ -256,7 +264,10 @@ class ScholarSpider(CrawlSpider): #depth first left to right
                 if  first_link :
                     if 'Cited by' in first_link.select("./text()").extract()[0] :
                         item['times_cited'] = int(re.search('Cited by ([0-9]*)',first_link.select("./text()").extract()[0]).group(1))
-                        item['id'] = re.search('.*cites=([0-9]*)&.*',first_link.select("./@href").extract()[0]).group(1)
+                        item['id'] = re.search('.*cites=([0-9]*)&.*', first_link.select("./@href").extract()[0]).group(1)
+                        cites_url = urljoin_rfc(get_base_url(response), first_link.select("./@href").extract()[0])
+                        self.log("just added request to %s" % cites_url)
+                        requests.append(Request(cites_url, callback=self.parse_items) )
                 if 'cites=' in response.url:
                         cites = re.search('.*cites=([0-9]*)&.*', response.url).group(1)
                         item['cites'] = cites
@@ -295,7 +306,7 @@ class ScholarSpider(CrawlSpider): #depth first left to right
                     item['bibtex_id'] = related_url.split(":")[1]
                 
                 if not self.bibtex:
-                    items_or_requests.append(item)
+                    items.append(item)
                 else:
                     base_url = get_base_url(response)
                     text_bibtex = p.select("font//span[@class ='gs_fl']/a[last()]/text()").extract()
@@ -309,8 +320,12 @@ class ScholarSpider(CrawlSpider): #depth first left to right
                     url_bibtex = "http://scholar.google.com/scholar.bib?q=info:" + bibtex_id + ":scholar.google.com/&output=citation&hl=en&as_sdt=0,5&ct=citation&cd=0"
                     request = Request(url_bibtex,callback=self.parse_bibtex)
                     request.meta['item'] = item
-                    items_or_requests.append(request)            
-        return items_or_requests
+                    requests.append(request)
+            else:
+                self.log("no_title")
+        self.log("%i items sent to pipeline" % len(items))
+        self.log("%i requests sent to downloader" % len(requests))
+        return items + requests
         
     def parse_bibtex(self, response): 
          item = response.meta['item']

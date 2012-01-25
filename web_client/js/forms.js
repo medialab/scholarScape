@@ -149,6 +149,7 @@ update_infos_campaign_interval = function (project, campaign) {
         }
         $("#i_nb_duplicates").text(data['message']['nb_super'])
         $("#check_duplicates").attr("href", "?page=duplicates&project="+project+"&campaign="+campaign)
+        $("#cancel_campaign").click(function() { cancel_campaign(); });
         start_urls = ""
         for (var i=0; i<campaign_data['start_urls'].length; i++) {
             url = campaign_data['start_urls'][i]
@@ -191,6 +192,13 @@ update_list_project = function () {
                 $(".list_projects").append("<option value='" +window.list_projects[i] + "'>" +window.list_projects[i] + "</option>")
             }
             update_list_campaigns();    
+        })   
+}
+
+cancel_campaign = function () {   
+        console.log("cancel_campaign", project, campaign);     
+        call("cancel_campaign",new Array(project, campaign), function (data) {
+            console.log(data)   
         })   
 }
 
@@ -258,9 +266,11 @@ update_list_project = function () {
                 depth          = $("#c_d").val() ,
                 search_type    = $("input:radio[name=c_search_type]:checked").val();
                 download_delay = $("#c_dd").val();
+                max_start_pages = $("#c_msp").val();
+                max_cites_pages = $("#c_mcp").val();
                 if ( $("#c_exact").attr("checked") ) exact = true
                 else exact = false
-            call("start_campaign",new Array(project,campaign, search_type, start_titles,download_delay,depth, exact), print_results) 
+            call("start_campaign",new Array(project,campaign, search_type, start_titles,download_delay,depth, max_start_pages, max_cites_pages, exact), print_results) 
         }    
     });
     $("#project_form").live("submit", function (e) { 
