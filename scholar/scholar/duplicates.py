@@ -87,7 +87,7 @@ def remove_duplicates(db, project, campaign) :
         
         advance = 0
         dup_scores = []
-        myprint(len(publications))
+        myprint(publications.count())
         for i, pairs in enumerate(combinations(publications,2)):
             percentage = math.floor( float(i)/float(total_nr_pairs)*100 )
             title_score, author_score = rate_duplicates(pairs[0], pairs[1])
