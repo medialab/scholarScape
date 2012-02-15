@@ -1,19 +1,26 @@
-import json, networkx as nx, os, pystache, pprint, shlex, subprocess, urllib, urllib2, zipfile
+import json
+import networkx as nx
+import os
+import pystache
+import pprint
+import shlex
+import subprocess
+import urllib
+import urllib2
+import zipfile
+from random import getrandbits
+from urllib import quote_plus as qp
 
 from twisted.application import service, internet
 from twisted.python import log
-from twisted.web import server
-from twisted.web import resource
+from twisted.web import server, resource, static
 from twisted.web.static import File
-from twisted.web import static
 from txjsonrpc.web import jsonrpc
-
 from contextlib import nested
 from datetime import date
 from pymongo import Connection, objectid
 from pymongo.errors import AutoReconnect
-from random import getrandbits
-from urllib import quote_plus as qp
+
 
 # Read config file and fill in mongo and scrapyd config files with custom values
 # try to connect to DB, send egg to scrapyd server
@@ -86,11 +93,9 @@ web_client_dir = "web_client"
 data_dir = os.path.join(root_dir,config["data_dir"])
 
 class Home(resource.Resource):
-    #TODO get url friendlier
     isLeaf = False
  
     def getChild(self, name, request):
-        
         if name == '':
             return self
         return resource.Resource.getChild(self, name, request)
@@ -114,8 +119,7 @@ class Home(resource.Resource):
 def _connect_to_db():
     """ attempt to connect to mongo database based on value in config_file
         return db object
-    """
-                
+    """  
     host   = config['mongo']['host']
     port   = config['mongo']['port']
     db     = config['mongo']['database']
@@ -129,42 +133,27 @@ def _connect_to_db():
         print "Could not connect to the database"
         exit()
 
-def scholarize(     query="",
-                    nr_results_per_page="100",
-                    exact="",
-                    at_least_one="",
-                    without="",
-                    where_words_occurs="",
-                    author="",
-                    publication="",
-                    start_date="",
-                    end_date="",
-                    areas = [                               
-                             #"bio",  #  Biology, Life Sciences, and Environmental Science	            
-                             #"med", #  Medicine, Pharmacology, and Veterinary Science       
-                             #"bus", #  Business, Administration, Finance, and Economics
-                             #"phy", #  Physics, Astronomy, and Planetary Science
-                             #"chm", #  Chemistry and Materials Science      
-                             #"soc", #  Social Sciences, Arts, and Humanities
-                             #"eng", #  Engineering, Computer Science, and Mathematics
-                    ] ) :
+def scholarize(query="", nr_results_per_page="100", exact="", at_least_one="",
+               without="", where_words_occurs="", author="", publication="",
+               start_date="", end_date="", areas = [] ) :
     """
     Advanced research in Google Scholar to URL
+    areas may contain "bio"  Biology, Life Sciences, and Environmental Science	            
+                      "med", Medicine, Pharmacology, and Veterinary Science       
+                      "bus", Business, Administration, Finance, and Economics
+                      "phy", Physics, Astronomy, and Planetary Science
+                      "chm", Chemistry and Materials Science      
+                      "soc", Social Sciences, Arts, and Humanities
+                      "eng", Engineering, Computer Science, and Mathematics
     """
     return ("http://scholar.google.com/scholar?\
-                                 as_q="+ qp(query) +"& \
-                                 num="+ nr_results_per_page +"& \
-                                 as_epq="+ qp(exact) +"& \
-                                 as_oq="+ qp(at_least_one) +"& \
-                                 as_eq="+ qp(without) +"& \
-                                 as_occt="+ qp(where_words_occurs) +"& \
-                                 as_sauthors="+ qp(author) +"& \
-                                 as_publication="+ qp(publication) +"& \
-                                 as_ylo="+ start_date +"& \
-                                 as_yhi="+ end_date +"& \
-                                 btnG=Search+Scholar& \
-                                 hl=en& \
-                                 as_subj=" + str.join('&as_subj',areas) ).replace(" ","")
+             as_q="+ qp(query) +"&num="+ nr_results_per_page +"& \
+             as_epq="+ qp(exact) +"&as_oq="+ qp(at_least_one) +"& \
+             as_eq="+ qp(without) +"&as_occt="+ qp(where_words_occurs) +"& \
+             as_sauthors="+ qp(author) +"&as_publication="+ qp(publication) +"& \
+             as_ylo="+ start_date +"&as_yhi="+ end_date +"& \
+             btnG=Search+Scholar&hl=en& \
+             as_subj=" + str.join('&as_subj',areas) ).replace(" ","")
 
 
 class scholarScape(jsonrpc.JSONRPC):
@@ -202,17 +191,13 @@ class scholarScape(jsonrpc.JSONRPC):
         total_number_of_possible_duplicates = dup_col.find({  "title_score" : {"$gt" : TITLE_THRESOLD, "$lt" : 1} }).count()
         number_duplicates_already_checked = dup_col.find({  "title_score" : {"$gt" : TITLE_THRESOLD, "$lt" : 1}, "human_say" : {"$exists" : True}	}).count()
         possible_duplicates = dup_col.find({  "title_score" : {"$gt" : TITLE_THRESOLD, "$lt" : 1}, "human_say" : {"$exists" : False}	}).limit(limit)
-        return ( total_number_of_possible_duplicates,
-                 number_duplicates_already_checked,
-                [ (
-                      col.find_one( {"_id" : pb["_id1"] })['title'],
-                      col.find_one( {"_id" : pb["_id2"] })['title'],
-                      round(pb["title_score"],2),
-                      str(pb["_id"]) 
-                    ) 
-                      for pb in possible_duplicates
-                ] 
-                )
+        return (total_number_of_possible_duplicates,
+                number_duplicates_already_checked,
+                [(col.find_one( {"_id" : pb["_id1"] })['title'],
+                  col.find_one( {"_id" : pb["_id2"] })['title'],
+                  round(pb["title_score"],2),
+                  str(pb["_id"]) )
+                 for pb in possible_duplicates])
     
     def jsonrpc_duplicate_human_check(self, project, campaign, dup_id, is_duplicate):
         collection_name = "__dup__"+project+"-"+campaign
@@ -274,17 +259,15 @@ class scholarScape(jsonrpc.JSONRPC):
 
         # preparation of the request to scrapyd
         url = 'http://%s:%s/schedule.json' % (config['scrapyd']['host'], config['scrapyd']['port']) 
-        values = [
-              ("project" , "scholar"),
-              ('spider' , 'scholar_spider'),
-              ('project_name' , project),
-              ('setting' , 'DOWNLOAD_DELAY=' + str(download_delay)) ,
-              ('setting' , 'DEPTH_LIMIT=' + str(depth)) ,
-              ('campaign_name' , campaign),  
-              ('max_start_pages' , max_start_pages),  
-              ('max_cites_pages' , max_cites_pages),  
-              ('start_urls_' , str.join(";", [scholarize_custom(start) for start in filter(lambda x : x, starts)])),  
-        ]
+        values = [("project" , "scholar"),
+                  ('spider' , 'scholar_spider'),
+                  ('project_name' , project),
+                  ('setting' , 'DOWNLOAD_DELAY=' + str(download_delay)) ,
+                  ('setting' , 'DEPTH_LIMIT=' + str(depth)) ,
+                  ('campaign_name' , campaign),  
+                  ('max_start_pages' , max_start_pages),  
+                  ('max_cites_pages' , max_cites_pages),  
+                  ('start_urls_' , str.join(";", [scholarize_custom(start) for start in filter(lambda x : x, starts)])),]
         
         data = urllib.urlencode(values)
         req = urllib2.Request(url, data)
@@ -303,15 +286,15 @@ class scholarScape(jsonrpc.JSONRPC):
             result = dict(code = "ok", message = "The crawling campaign was successfully launched. You can see it in the Explore section.\n")
             result['job_id'] = str(results["jobid"])
             # creation of the campaign object in the DB
-            campaign =  {
-                        "name" : campaign,
-                        "date" : str(date.today()),
-                        "depth" : depth,
-                        "download_delay" : download_delay,
-                        "start_urls" : [scholarize_custom(start) for start in filter(lambda x : x, starts)],
-                        "job_id" : str(results["jobid"]),
-                        "status" : "alive",
-                    }
+            campaign =  {"name" : campaign,
+                         "date" : str(date.today()),
+                         "depth" : depth,
+                         "download_delay" : download_delay,
+                         "start_urls" : [scholarize_custom(start) for start in filter(lambda x : x, starts)],
+                         "job_id" : str(results["jobid"]),
+                         "max_start_pages" : max_start_pages,  
+                         "max_cites_pages" : max_cites_pages,  
+                         "status" : "alive",}
             collection.insert(campaign)   
             return result
         else :
@@ -322,10 +305,8 @@ class scholarScape(jsonrpc.JSONRPC):
         collection = db[project_name]
         job_id = collection.find_one({ "name" : campaign })["job_id"]
         url = 'http://%s:%s/cancel.json' % (config['scrapyd']['host'], config['scrapyd']['port']) 
-        values = [
-              ("project" , "scholar"),
-              ('job' , job_id),
-        ]
+        values = [("project" , "scholar"),
+                  ('job' , job_id),]
         
         data = urllib.urlencode(values)
         req = urllib2.Request(url, data)
@@ -425,14 +406,16 @@ class scholarScape(jsonrpc.JSONRPC):
         print "Dumping database..."
         if campaign == "*" : campaign = ""
         filename = os.path.join(os.path.dirname(__file__), data_dir, "json", project + "-" + campaign + str(getrandbits(128)) + ".json" )
-        export_command = str('mongoexport -h "' + config["mongo"]["host"] + '" -d "' + config["mongo"]["database"] + '" -c "' + project + '" -o ' + filename)
+        export_command = ("mongoexport -h '%(host)s' -d '%(database)s' -c '%(project)s' -o %(filename)s" 
+                            % {"host" : config["mongo"]["host"], 
+                               "database" : config["mongo"]["database"], 
+                               "project" : project, 
+                               "filename" : filename})
         if campaign :
             query = {"$or" : [ 
                         {"campaign" : campaign, "download_delay" : {"$exists" : False}}, 
-                        {"name" : campaign, "download_delay" : {"$exists" : True} }
-                      ]
-                    } 
-            export_command += '-q "' + str(query) + '"'
+                        {"name" : campaign, "download_delay" : {"$exists" : True} }]} 
+            export_command += "-q '%s'" % query
         print export_command
         args = shlex.split(export_command)
         p = subprocess.call(args)
@@ -455,21 +438,18 @@ class scholarScape(jsonrpc.JSONRPC):
         collection = db[project_name]
         nb_super   = collection.find({"campaign" : campaign_name, "nr_children" : {"$exists" : True}}).count()
         nb_items   = collection.find({"campaign" : campaign_name}).count()  - nb_super
-        last_items = list(collection.find( { "campaign" : campaign_name }, {"_id" : False, "parent_id" : False} ).limit(10).sort([ ("$natural", -1) ]) ) # most recent items
-        campaign     = collection.find({
-                                        "download_delay" : {"$exists" : True},
-                                        "name" : campaign_name 
-                                       })[0]
+        last_items = list(collection.find({"campaign" : campaign_name }, 
+                                          {"_id" : False, "parent_id" : False} )
+                                    .limit(10).sort([ ("$natural", -1) ]) ) # most recent items
+        campaign     = collection.find({"download_delay" : {"$exists" : True},
+                                        "name" : campaign_name})[0]
         del campaign['_id']
         
-        retour = { "code" : "ok",
-                 "message" : { 
-                    "nb_super"  : nb_super,
-                    "nb_items"  : nb_items,
-                    "last_items": last_items,
-                    "campaign"    : campaign
-                 }
-                }
+        retour = {"code" : "ok",
+                  "message" : {"nb_super"  : nb_super,
+                               "nb_items"  : nb_items,
+                               "last_items": last_items,
+                               "campaign"    : campaign}}
         return retour
 
     def jsonrpc_monitor_project(self, project_name) :
@@ -477,9 +457,8 @@ class scholarScape(jsonrpc.JSONRPC):
         collection = db[project_name]
         nb_campaigns = collection.find({"download_delay" : {"$exists" : True}}).count()
         nb_items = collection.find({"title" : {"$exists" : True}}).count()
-        return { "nb_campaigns" : nb_campaigns,
-                 "nb_items"     : nb_items
-               }
+        return {"nb_campaigns" : nb_campaigns,
+                "nb_items"     : nb_items}
 
     def jsonrpc_remove_project(self,project_name) :
         try : 

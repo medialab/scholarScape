@@ -209,12 +209,16 @@ class ScholarSpider(CrawlSpider): #depth first left to right
 
 
 
-        if self.max_start_pages and params.get("start") > self.max_start_pages and "cites" not in params:
+        if (self.max_start_pages and 
+            params.get("start") > self.max_start_pages and 
+            "cites" not in params):
             self.log("number of maximal start pages exceeded")
             self.log("%s %s %s %s" % (self.max_start_pages, self.max_cites_pages, ", ".join(params), params.get("start")))
             return []
          
-        if self.max_cites_pages and params.get("start") > self.max_cites_pages and "cites" in params:
+        if (self.max_cites_pages and 
+            params.get("start") > self.max_cites_pages and 
+            "cites" in params):
             self.log("number of maximal cites documents exceeded")
             self.log("%s %s %s %s" % (self.max_start_pages, self.max_cites_pages, ", ".join(params), params.get("start")))
             return []
@@ -246,14 +250,13 @@ class ScholarSpider(CrawlSpider): #depth first left to right
                 
                 #PUBLICATION TYPE (PDF,BOOK,HTML)
                 if p.select(pr.type_pub_xpath+ "/text()").extract():
-                    item['type_pub'] = ( p.select(pr.type_pub_xpath+ "/text()").extract()[0]
-                                          .replace("[","")
-                                          .replace("]","")
-                                          .lower() )
-                    item['title'] = item['title'].replace(item['type_pub'],"")
+                    item['type_pub'] = (p.select(pr.type_pub_xpath + "/text()").extract()[0]
+                                         .replace("[", "").replace("]", "")
+                                         .lower() )
+                    item['title'] = item['title'].replace(item['type_pub'], "")
                 
-                if "[CITATION]" in item['title'] :
-                    item["title"] = item['title'].replace("[CITATION]","")
+                if "[CITATION]" in item['title']:
+                    item["title"] = item['title'].replace("[CITATION]", "")
                     item['type_pub'] = "citation"
                 
                 # LINK
@@ -261,13 +264,14 @@ class ScholarSpider(CrawlSpider): #depth first left to right
                     item['href'] = p.select(pr.href_xpath).extract()[0]
                 
                 first_link = p.select(pr.cited_by_xpath) # not necessarily Cited by link
-                if  first_link :
-                    if 'Cited by' in first_link.select("./text()").extract()[0] :
-                        item['times_cited'] = int(re.search('Cited by ([0-9]*)',first_link.select("./text()").extract()[0]).group(1))
-                        item['id'] = re.search('.*cites=([0-9]*)&.*', first_link.select("./@href").extract()[0]).group(1)
-                        cites_url = urljoin_rfc(get_base_url(response), first_link.select("./@href").extract()[0])
-                        self.log("just added request to %s" % cites_url)
-                        requests.append(Request(cites_url, callback=self.parse_items) )
+                if (first_link and
+                    'Cited by' in first_link.select("./text()").extract()[0]) :
+                    item['times_cited'] = int(re.search('Cited by ([0-9]*)',first_link.select("./text()").extract()[0]).group(1))
+                    item['id'] = re.search('.*cites=([0-9]*)&.*', first_link.select("./@href").extract()[0]).group(1)
+                    cites_url = urljoin_rfc(get_base_url(response), first_link.select("./@href").extract()[0])
+                    self.log("just added request to %s" % cites_url)
+                    requests.append(Request(cites_url, callback=self.parse_items) )
+               
                 if 'cites=' in response.url:
                         cites = re.search('.*cites=([0-9]*)&.*', response.url).group(1)
                         item['cites'] = cites
