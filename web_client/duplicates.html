@@ -8,7 +8,7 @@ $.extend({
     {
       hash = hashes[i].split('=');
       vars.push(hash[0]);
-      vars[hash[0]] = hash[1];
+      vars[decodeURI(hash[0])] = decodeURI(hash[1]);
     }
     return vars;
   },
@@ -56,7 +56,7 @@ $( function (e) {
             number_duplicates_already_checked =  window.data[1]
             $("#number_duplicates_already_checked").text(number_duplicates_already_checked)
             $("#total_number_of_possible_duplicates").text(total_number_of_possible_duplicates)
-            for (var i=0; i< NB_ITEMS_LIMIT; i++ ) {
+            for (var i=0; i< window.data[2].length; i++ ) {
               var duplicate = window.data[2][i]
                   html = ""
                   html += "<tr style='border:1px solid black'>"

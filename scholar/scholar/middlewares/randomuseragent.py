@@ -8,4 +8,6 @@ class RandomUserAgentMiddleware(object):
         ua  = random.choice(USER_AGENT_LIST)
         if ua:
             request.headers.setdefault('User-Agent', ua)
-        #log.msg('>>>> UA %s'%request.headers)
+        log.msg(' UserAgent %s'%request.headers)
+        request.meta["proxy"]="http://localhost:8118/"
+        log.msg('proxy %s'%request.meta["proxy"])

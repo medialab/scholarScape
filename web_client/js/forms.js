@@ -148,7 +148,9 @@ update_infos_campaign_interval = function (project, campaign) {
             $("#i_nb_items").append("&nbsp<img src='images/ajax-loader.gif'>")
         }
         $("#i_nb_duplicates").text(data['message']['nb_super'])
-        $("#check_duplicates").attr("href", "?page=duplicates&project="+project+"&campaign="+campaign)
+        $("#check_duplicates").attr("href", "?page=duplicates&project="+encodeURI(project)+"&campaign="+encodeURI(campaign))
+        // added by Paul 
+        $("#remove_duplicates").click(function() { remove_duplicates(); });
         $("#cancel_campaign").click(function() { cancel_campaign(); });
         start_urls = ""
         for (var i=0; i<campaign_data['start_urls'].length; i++) {
@@ -195,12 +197,25 @@ update_list_project = function () {
         })   
 }
 
+// added by Paul
+remove_duplicates = function () {   
+        console.log("remove_duplicates", project, campaign);    
+         
+        call("remove_duplicates",new Array(project, campaign), function (data) {
+            console.log(data)
+             ghost_print("The remove duplicate process (pid:"+data+") has just started, please wait...","light")
+            //ghost_print("The remove duplicate process finished, you can now review results mnually","light")   
+        })   
+}
+
 cancel_campaign = function () {   
         console.log("cancel_campaign", project, campaign);     
         call("cancel_campaign",new Array(project, campaign), function (data) {
             console.log(data)   
         })   
 }
+
+
 
     
     $('#list_projects_campaigns .del-project').live('click', function(e) {

@@ -26,8 +26,11 @@ SPIDER_MIDDLEWARES = {
 }
 
 DOWNLOADER_MIDDLEWARES = {
-    'scholar.middlewares.randomuseragent.RandomUserAgentMiddleware': None,
-    'scrapy.contrib.downloadermiddleware.useragent.UserAgentMiddleware': 400,
+    # 'scholar.middlewares.randomuseragent.RandomUserAgentMiddleware': None,
+    # 'scrapy.contrib.downloadermiddleware.useragent.UserAgentMiddleware': 400,
+	'scholar.middlewares.randomuseragent.RandomUserAgentMiddleware': 400,
+	'scholar.middlewares.proxymiddleware.ProxyMiddleware': 750,
+    'scrapy.contrib.downloadermiddleware.useragent.UserAgentMiddleware': None,
 }
 
 USER_AGENT_LIST = [
@@ -43,6 +46,8 @@ USER_AGENT_LIST = [
 "Mozilla/4.0 (compatible; MSIE 6.0; MSIE 5.5; Windows NT 5.1) Opera 7.02 [en]",
 "Mozilla/5.0 (Windows; U; Windows NT 5.1; en-US; rv:1.7.5) Gecko/20060127 Netscape/8.1"
 ]
+
+PROXY_URL="http://localhost:8118/"
 
 EXTENSIONS = [
 'scholar.extensions.spider_status.Spider_status',

@@ -8,6 +8,8 @@ import networkx as nx
 import sys
 from scrapy import log
 
+from pipelines import MONGO_USER, MONGO_PASSWD, MONGO_HOST, MONGO_PORT, MONGO_DATABASE
+
 def myprint(x):
     pass
 
@@ -77,6 +79,8 @@ def remove_duplicates(db, project, campaign) :
     title_thresold = 0.8
     col = db[project]
     dup_col = db["__dup__" + project + "-" + campaign]
+    dup_col.drop()
+    dup_col = db["__dup__" + project + "-" + campaign]
     myprint("REMOVE_DUPLICATES : I've been summoned to eradicate all duplicates")
     def calculate_dup_scores() :
         logging.info("Calculating duplicates ratio")
@@ -98,7 +102,7 @@ def remove_duplicates(db, project, campaign) :
                     "title_score" :  title_score,
                     "author_score" : author_score
                 })
-            if percentage > advance:
+            if percentage > advance and dup_scores:
                 dup_col.insert(dup_scores) #bulk insert to gain perf
                 dup_scores = []
                 advance = percentage
@@ -157,22 +161,23 @@ def remove_duplicates(db, project, campaign) :
                 nr_children += 1
                 pub = col.find_one( {"_id" : pub_id }, what_to_get)
                 if not pub:
-                    print pub_id
-                if pub.get("title") and len(pub["title"]) > len(title):
-                    title =  pub["title"]
-                if pub.get("authors"):
-                    authors = authors|set(pub["authors"])
-                if pub.get("book_title") and len(pub["book_title"]) > len(book_title):
-                    book_title = pub["book_title"]
-                depths = depths | set(pub["depths"])
-                if pub.get("cites") :
-                    try :
-                        cites = cites | set( [ pub["cites"] ] )
-                    except :
-                        print pub["cites"]
-                        exit(0)
-                if pub.get("times_cited") :
-                    times_cited += pub["times_cited"]
+                    print "unknown Publication found in _dup_ collection : "+str(pub_id)
+                else :
+                    if pub.get("title") and len(pub["title"]) > len(title):
+                        title =  pub["title"]
+                    if pub.get("authors"):
+                        authors = authors|set(pub["authors"])
+                    if pub.get("book_title") and len(pub["book_title"]) > len(book_title):
+                        book_title = pub["book_title"]
+                    depths = depths | set(pub["depths"])
+                    if pub.get("cites") :
+                        try :
+                            cites = cites | set( [ pub["cites"] ] )
+                        except :
+                            print pub["cites"]
+                            exit(0)
+                    if pub.get("times_cited") :
+                        times_cited += pub["times_cited"]
             sP_id = col.insert( {  
                             "title" : title,
                             "authors" : list(authors),
@@ -202,7 +207,8 @@ def remove_duplicates(db, project, campaign) :
             
 if __name__ == "__main__":
     if len(sys.argv) == 3 :   
-        db = Connection("lrrr.medialab.sciences-po.fr")['scholarScape']
+        connection = Connection("mongodb://%s:%s@%s:%s/%s" % (MONGO_USER, MONGO_PASSWD, MONGO_HOST, MONGO_PORT, MONGO_DATABASE) )
+        db = connection[MONGO_DATABASE]
         project = sys.argv[1]
         campaign = sys.argv[2]
         if project not in db.collection_names():
@@ -211,7 +217,7 @@ if __name__ == "__main__":
         if not db[project].find( { "download_delay" : {"$exists" : True}, "name" : campaign } ).count() > 0 :
             print "bad_campaign"
             exit(0)
-        #filename='duplicates-'+project+'-'+campaign+'.log',
+        logging.FileHandler('duplicates-'+project+'-'+campaign+'.log')
         logging.basicConfig(level=logging.DEBUG)
         myprint = logging.info
         remove_duplicates(db, project,campaign)

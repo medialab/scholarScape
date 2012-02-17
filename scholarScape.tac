@@ -12,6 +12,7 @@ from random import getrandbits
 from urllib import quote_plus as qp
 
 from twisted.application import service, internet
+from twisted.internet import  threads
 from twisted.python import log
 from twisted.web import server, resource, static
 from twisted.web.static import File
@@ -20,6 +21,7 @@ from contextlib import nested
 from datetime import date
 from pymongo import Connection, objectid
 from pymongo.errors import AutoReconnect
+from scholar.scholar.duplicates import remove_duplicates 
 
 
 # Read config file and fill in mongo and scrapyd config files with custom values
@@ -191,6 +193,7 @@ class scholarScape(jsonrpc.JSONRPC):
         total_number_of_possible_duplicates = dup_col.find({  "title_score" : {"$gt" : TITLE_THRESOLD, "$lt" : 1} }).count()
         number_duplicates_already_checked = dup_col.find({  "title_score" : {"$gt" : TITLE_THRESOLD, "$lt" : 1}, "human_say" : {"$exists" : True}	}).count()
         possible_duplicates = dup_col.find({  "title_score" : {"$gt" : TITLE_THRESOLD, "$lt" : 1}, "human_say" : {"$exists" : False}	}).limit(limit)
+        print "found "+str(possible_duplicates.count())+" possible duplicates" 
         return (total_number_of_possible_duplicates,
                 number_duplicates_already_checked,
                 [(col.find_one( {"_id" : pb["_id1"] })['title'],
@@ -300,6 +303,15 @@ class scholarScape(jsonrpc.JSONRPC):
         else :
             result = dict(code = "fail", message = "There was an error telling scrapyd to launch campaign crawl")
             return result
+    
+    #added by Paul
+    def jsonrpc_remove_duplicates(self, project_name, campaign):
+        p = subprocess.Popen(["python","scholar/scholar/duplicates.py",project_name, campaign])
+        print "subprocess duplicates started" 
+        #threads.deferToThread(remove_duplicates,db, project_name, campaign)
+        #result = dict(code = "succeed", message = "duplicate removing process finished for project %s, campaign %s",(project_name, campaign))
+        return p.pid
+    
     
     def jsonrpc_cancel_campaign(self, project_name, campaign):
         collection = db[project_name]

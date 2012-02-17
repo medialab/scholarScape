@@ -101,8 +101,8 @@ class ScholarSpider(CrawlSpider): #depth first left to right
 
     # ---------------  LOGIN  -----------------------------------
     
-    user_email =  'dialabal@gmail.com'
-    user_passwd = 'jaunisse'
+   #  user_email =  'dialabal@gmail.com'
+#     user_passwd = ',724#"U7)uh.Xb:q>ULJ0Edpm'
     
     def init_request(self): 
         """This function is called before crawling starts."""
@@ -110,24 +110,24 @@ class ScholarSpider(CrawlSpider): #depth first left to right
 
     def login(self):
         return self.initialized()
-        return Request("https://www.google.com/accounts/ServiceLogin?hl=en", callback=self.fillForm)
-
-    def fillForm(self, response) :
-        headers={'User-agent' : self.USER_AGENT} 
-        return FormRequest.from_response(response, formname="gaia_loginform", formdata={'Email' : self.user_email, "Passwd" : self.user_passwd}, headers=headers,callback=self.check_login_response)
-
-    def check_login_response(self, response):
-        """Check the response returned by a login request to see if we are
-        successfully logged in.
-        """
-        with open('sauvegarde.html','r+') as f:
-            f.write(response.body)
-        if "Dialab Ali" in response.body:
-            self.log("\n\n\nSuccessfully logged in. Let's start crawling!\n\n\n")
-            # Now the crawling can begin..
-            return self.initialized()
-        else:
-            self.log("\n\n\nBad times :(\n\n\n")
+        # return Request("https://www.google.com/accounts/ServiceLogin?hl=en", callback=self.fillForm)
+# 
+#     def fillForm(self, response) :
+#         headers={'User-agent' : self.USER_AGENT} 
+#         return FormRequest.from_response(response, formname="gaia_loginform", formdata={'Email' : self.user_email, "Passwd" : self.user_passwd}, headers=headers,callback=self.check_login_response)
+# 
+#     def check_login_response(self, response):
+#         """Check the response returned by a login request to see if we are
+#         successfully logged in.
+#         """
+#         with open('sauvegarde.html','r+') as f:
+#             f.write(response.body)
+#         if "Dialab Ali" in response.body:
+#             self.log("\n\n\nSuccessfully logged in. Let's start crawling!\n\n\n")
+#             # Now the crawling can begin..
+#             return self.initialized()
+#         else:
+#             self.log("\n\n\nBad times :(\n\n\n")
             # Something went wrong, we couldn't log in, so nothing happens.
     # --------------------------------------------------    
     
@@ -207,8 +207,6 @@ class ScholarSpider(CrawlSpider): #depth first left to right
         url = urlparse(response.url)
         params = dict([part.split('=') for part in url[4].split('&')])
 
-
-
         if (self.max_start_pages and 
             params.get("start") > self.max_start_pages and 
             "cites" not in params):
@@ -228,105 +226,106 @@ class ScholarSpider(CrawlSpider): #depth first left to right
         publications = hxs.select(pr.item_xpath)
         items, requests = [], []
         for i, p in enumerate(publications):
-        
-            self.log("msp : %i, current number : %i " % (self.max_start_pages, (params.get("start") or 0) + i))
-        
-        
-            if self.max_start_pages and (params.get("start") or 0) + i + 1 > self.max_start_pages and "cites" not in params:
-                self.log("number of maximal start pages exceeded")
-                self.log("%s %s %s %s" % (self.max_start_pages, self.max_cites_pages, ", ".join(params), params.get("start")))
-                break
-             
-            if self.max_cites_pages and (params.get("start") or 0) + i + 1 > self.max_cites_pages and "cites" in params:
-                self.log("number of maximal cites documents exceeded")
-                self.log("%s %s %s %s" % (self.max_start_pages, self.max_cites_pages, ", ".join(params), params.get("start")))
-                break
+            # filtering the Author profile results which containes a table
+            if len(p.select("table")) == 0 :
+                self.log("msp : %i, current number : %i " % (self.max_start_pages, (params.get("start") or 0) + i))
             
-            item = ScholarItem()
-            #TITLE
-            if p.select(pr.title_xpath  + "//text()").extract():
-                item['title'] = str.join("", p.select(pr.title_xpath  + "//text()").extract())
-                item['depth_cb'] = response.meta['depth']
+            
+                if self.max_start_pages and (params.get("start") or 0) + i + 1 > self.max_start_pages and "cites" not in params:
+                    self.log("number of maximal start pages exceeded")
+                    self.log("%s %s %s %s" % (self.max_start_pages, self.max_cites_pages, ", ".join(params), params.get("start")))
+                    break
+                 
+                if self.max_cites_pages and (params.get("start") or 0) + i + 1 > self.max_cites_pages and "cites" in params:
+                    self.log("number of maximal cites documents exceeded")
+                    self.log("%s %s %s %s" % (self.max_start_pages, self.max_cites_pages, ", ".join(params), params.get("start")))
+                    break
                 
-                #PUBLICATION TYPE (PDF,BOOK,HTML)
-                if p.select(pr.type_pub_xpath+ "/text()").extract():
-                    item['type_pub'] = (p.select(pr.type_pub_xpath + "/text()").extract()[0]
-                                         .replace("[", "").replace("]", "")
-                                         .lower() )
-                    item['title'] = item['title'].replace(item['type_pub'], "")
-                
-                if "[CITATION]" in item['title']:
-                    item["title"] = item['title'].replace("[CITATION]", "")
-                    item['type_pub'] = "citation"
-                
-                # LINK
-                if p.select(pr.href_xpath).extract() :    
-                    item['href'] = p.select(pr.href_xpath).extract()[0]
-                
-                first_link = p.select(pr.cited_by_xpath) # not necessarily Cited by link
-                if (first_link and
-                    'Cited by' in first_link.select("./text()").extract()[0]) :
-                    item['times_cited'] = int(re.search('Cited by ([0-9]*)',first_link.select("./text()").extract()[0]).group(1))
-                    item['id'] = re.search('.*cites=([0-9]*)&.*', first_link.select("./@href").extract()[0]).group(1)
-                    cites_url = urljoin_rfc(get_base_url(response), first_link.select("./@href").extract()[0])
-                    self.log("just added request to %s" % cites_url)
-                    requests.append(Request(cites_url, callback=self.parse_items) )
-               
-                if 'cites=' in response.url:
-                        cites = re.search('.*cites=([0-9]*)&.*', response.url).group(1)
-                        item['cites'] = cites
-                item['scrapped_from'] = response.url
-                
-                infos = p.select(pr.info_xpath + "//text()").extract()[0]
-                
-                item['abstract'] = str.join("", p.select(pr.abstract_xpath +"//text()").extract() )
-                item['abstract'] = item['abstract'].replace(infos,"")
-                
-                infos = infos.split(" - ")
-                
-                if len(infos)>1 :
-                    item["authors"]=infos[0].split(", ")
-                    infos=" ".join(infos[1:])
-                    d=re.match("(.*?),? *(\d\d\d\d) *(.*)",infos)
-                    if d : 
-                        item['book_title'] = d.group(1)
-                        item['date']       = d.group(2)
-                        item['source']     = d.group(3) #source
-                    else :                    
-                        item['source']     = infos			
-                else :
-                    item['authors']=infos[0].split(", ")
-                
-                item['project']  = self.project
-                item['campaign'] = self.campaign    
-                
-                
-                follow_links = p.select("font//span[@class ='gs_fl']/a")
-                related_url = ""
-                for fl in follow_links:
-                    if fl.select("text()").extract()[0] == u"Related articles" :
-                        related_url = fl.select("@href").extract()[0]
-                if related_url:    
-                    item['bibtex_id'] = related_url.split(":")[1]
-                
-                if not self.bibtex:
-                    items.append(item)
-                else:
-                    base_url = get_base_url(response)
-                    text_bibtex = p.select("font//span[@class ='gs_fl']/a[last()]/text()").extract()
+                item = ScholarItem()
+                #TITLE
+                if p.select(pr.title_xpath  + "//text()").extract():
+                    item['title'] = str.join("", p.select(pr.title_xpath  + "//text()").extract())
+                    item['depth_cb'] = response.meta['depth']
+                    
+                    #PUBLICATION TYPE (PDF,BOOK,HTML)
+                    if p.select(pr.type_pub_xpath+ "/text()").extract():
+                        item['type_pub'] = (p.select(pr.type_pub_xpath + "/text()").extract()[0]
+                                             .replace("[", "").replace("]", "")
+                                             .lower() )
+                        item['title'] = item['title'].replace(item['type_pub'], "")
+                    
+                    if "[CITATION]" in item['title']:
+                        item["title"] = item['title'].replace("[CITATION]", "")
+                        item['type_pub'] = "citation"
+                    
+                    # LINK
+                    if p.select(pr.href_xpath).extract() :    
+                        item['href'] = p.select(pr.href_xpath).extract()[0]
+                    
+                    first_link = p.select(pr.cited_by_xpath) # not necessarily Cited by link
+                    if (first_link and
+                        'Cited by' in first_link.select("./text()").extract()[0]) :
+                        item['times_cited'] = int(re.search('Cited by ([0-9]*)',first_link.select("./text()").extract()[0]).group(1))
+                        item['id'] = re.search('.*cites=([0-9]*)&.*', first_link.select("./@href").extract()[0]).group(1)
+                        cites_url = urljoin_rfc(get_base_url(response), first_link.select("./@href").extract()[0])
+                        self.log("just added request to %s" % cites_url)
+                        requests.append(Request(cites_url, callback=self.parse_items) )
+                   
+                    if 'cites=' in response.url:
+                            cites = re.search('.*cites=([0-9]*)&.*', response.url).group(1)
+                            item['cites'] = cites
+                    item['scrapped_from'] = response.url
+                    
+                    infos = p.select(pr.info_xpath + "//text()").extract()[0]
+                    
+                    item['abstract'] = str.join("", p.select(pr.abstract_xpath +"//text()").extract() )
+                    item['abstract'] = item['abstract'].replace(infos,"")
+                    
+                    infos = infos.split(" - ")
+                    
+                    if len(infos)>1 :
+                        item["authors"]=infos[0].split(", ")
+                        infos=" ".join(infos[1:])
+                        d=re.match("(.*?),? *(\d\d\d\d) *(.*)",infos)
+                        if d : 
+                            item['book_title'] = d.group(1)
+                            item['date']       = d.group(2)
+                            item['source']     = d.group(3) #source
+                        else :                    
+                            item['source']     = infos			
+                    else :
+                        item['authors']=infos[0].split(", ")
+                    
+                    item['project']  = self.project
+                    item['campaign'] = self.campaign    
+                    
+                    
                     follow_links = p.select("font//span[@class ='gs_fl']/a")
                     related_url = ""
                     for fl in follow_links:
                         if fl.select("text()").extract()[0] == u"Related articles" :
                             related_url = fl.select("@href").extract()[0]
+                    if related_url:    
+                        item['bibtex_id'] = related_url.split(":")[1]
                     
-                    bibtex_id = related_url.split(":")[1]
-                    url_bibtex = "http://scholar.google.com/scholar.bib?q=info:" + bibtex_id + ":scholar.google.com/&output=citation&hl=en&as_sdt=0,5&ct=citation&cd=0"
-                    request = Request(url_bibtex,callback=self.parse_bibtex)
-                    request.meta['item'] = item
-                    requests.append(request)
-            else:
-                self.log("no_title")
+                    if not self.bibtex:
+                        items.append(item)
+                    else:
+                        base_url = get_base_url(response)
+                        text_bibtex = p.select("font//span[@class ='gs_fl']/a[last()]/text()").extract()
+                        follow_links = p.select("font//span[@class ='gs_fl']/a")
+                        related_url = ""
+                        for fl in follow_links:
+                            if fl.select("text()").extract()[0] == u"Related articles" :
+                                related_url = fl.select("@href").extract()[0]
+                        
+                        bibtex_id = related_url.split(":")[1]
+                        url_bibtex = "http://scholar.google.com/scholar.bib?q=info:" + bibtex_id + ":scholar.google.com/&output=citation&hl=en&as_sdt=0,5&ct=citation&cd=0"
+                        request = Request(url_bibtex,callback=self.parse_bibtex)
+                        request.meta['item'] = item
+                        requests.append(request)
+                else:
+                    self.log("no_title")
         self.log("%i items sent to pipeline" % len(items))
         self.log("%i requests sent to downloader" % len(requests))
         return items + requests
