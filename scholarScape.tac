@@ -193,14 +193,34 @@ class scholarScape(jsonrpc.JSONRPC):
         total_number_of_possible_duplicates = dup_col.find({  "title_score" : {"$gt" : TITLE_THRESOLD, "$lt" : 1} }).count()
         number_duplicates_already_checked = dup_col.find({  "title_score" : {"$gt" : TITLE_THRESOLD, "$lt" : 1}, "human_say" : {"$exists" : True}	}).count()
         possible_duplicates = dup_col.find({  "title_score" : {"$gt" : TITLE_THRESOLD, "$lt" : 1}, "human_say" : {"$exists" : False}	}).limit(limit)
+        
         print "found "+str(possible_duplicates.count())+" possible duplicates" 
+        
+        duplicates=[]
+        for pb in possible_duplicates :
+            pub1 = col.find_one( {"_id" : pb["_id1"] },{"title":1,"href":1})
+            pub2 = col.find_one( {"_id" : pb["_id2"] },{"title":1,"href":1})
+            if pub1 and pub2 :
+                try : 
+                    duplicate=[[pub1['title'],pub1['href'] if 'href' in pub1 else ""],
+                           [pub2['title'],pub2['href'] if 'href' in pub2 else ""],
+                           round(pb["title_score"],2),
+                           str(pb["_id"])
+                           ]
+                    duplicates.append(duplicate)
+                except : 
+                    print "%s %s"%(pb["_id1"],pb["_id2"])
+            else : 
+                if pub2 == None :
+                    badpub = (pub2,pb["_id2"])
+                if pub1 == None : 
+                    badpub = (pub1,pb["_id1"])
+                print "one duplicate not found %s %s" % badpub                 
+        
         return (total_number_of_possible_duplicates,
                 number_duplicates_already_checked,
-                [(col.find_one( {"_id" : pb["_id1"] })['title'],
-                  col.find_one( {"_id" : pb["_id2"] })['title'],
-                  round(pb["title_score"],2),
-                  str(pb["_id"]) )
-                 for pb in possible_duplicates])
+                duplicates
+                )
     
     def jsonrpc_duplicate_human_check(self, project, campaign, dup_id, is_duplicate):
         collection_name = "__dup__"+project+"-"+campaign
