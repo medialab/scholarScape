@@ -217,8 +217,8 @@ if __name__ == "__main__":
         if not db[project].find( { "download_delay" : {"$exists" : True}, "name" : campaign } ).count() > 0 :
             print "bad_campaign"
             exit(0)
-        logging.FileHandler('duplicates-'+project+'-'+campaign+'.log')
-        logging.basicConfig(level=logging.DEBUG)
+            
+        logging.basicConfig(filename='duplicates-'+project+'-'+campaign+'.log',filemode="w+",level=logging.DEBUG)
         myprint = logging.info
         remove_duplicates(db, project,campaign)
     else :

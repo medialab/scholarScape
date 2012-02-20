@@ -19,6 +19,7 @@ from twisted.web.static import File
 from txjsonrpc.web import jsonrpc
 from contextlib import nested
 from datetime import date
+from datetime import datetime
 from pymongo import Connection, objectid
 from pymongo.errors import AutoReconnect
 from scholar.scholar.duplicates import remove_duplicates 
@@ -324,13 +325,40 @@ class scholarScape(jsonrpc.JSONRPC):
             result = dict(code = "fail", message = "There was an error telling scrapyd to launch campaign crawl")
             return result
     
+    
     #added by Paul
     def jsonrpc_remove_duplicates(self, project_name, campaign):
-        p = subprocess.Popen(["python","scholar/scholar/duplicates.py",project_name, campaign])
-        print "subprocess duplicates started" 
-        #threads.deferToThread(remove_duplicates,db, project_name, campaign)
-        #result = dict(code = "succeed", message = "duplicate removing process finished for project %s, campaign %s",(project_name, campaign))
-        return p.pid
+        col=db["__process__remove_duplicates"]
+        existing_process_running=col.find_one({"project_name": project_name,"campaign":campaign},{"status":1,"pid":1,"start_date":1})
+        if existing_process_running and existing_process_running["status"] == "running":
+            return "a process to remove duplicate is already running with PID: %s started %s"%(existing_process_running["pid"],existing_process_running["start_date"])
+        else :
+            
+            # create a process            
+            p = subprocess.Popen(["python","scholar/scholar/duplicates.py",project_name, campaign])
+            
+            # trace it in the database
+            if existing_process_running and existing_process_running["status"] == "finished":
+                # remove the existing trace from database
+                col.remove({"project_name": project_name,"campaign":campaign})
+            
+            col.insert({"project_name": project_name,"campaign":campaign,"status":"running","pid":p.pid,"start_date":datetime.now()})
+            
+            # wait for the subprocess to stop 
+            
+            def wait_for_process(project_name, campaign,p) :
+            # waiting for end of process method
+                print "waiting for the process %s to stop"%p.pid
+                p.wait()
+                col=db["__process__remove_duplicates"]
+                col.update({"project_name": project_name,"campaign":campaign},{"$set":{"status":"finished","end_date":datetime.now()}})
+                print "process %s stopped"%p.pid
+
+            # put the blocking p.wait in a thread
+            d=threads.deferToThread(wait_for_process,project_name, campaign,p)
+            #log
+            print "subprocess duplicates started" 
+            return "process started with PID :%s"%(p.pid)
     
     
     def jsonrpc_cancel_campaign(self, project_name, campaign):

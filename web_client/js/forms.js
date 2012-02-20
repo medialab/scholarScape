@@ -203,7 +203,7 @@ remove_duplicates = function () {
          
         call("remove_duplicates",new Array(project, campaign), function (data) {
             console.log(data)
-             ghost_print("The remove duplicate process (pid:"+data+") has just started, please wait...","light")
+             ghost_print(data,"light")
             //ghost_print("The remove duplicate process finished, you can now review results mnually","light")   
         })   
 }
