@@ -223,7 +223,10 @@ $( function () {
     }
     update_list_project()
 
-    $("#submit_c").bind('click', function (e) { 
+    $("#submit_c").bind('click', function (e) {
+		if (console && console.log) {
+			console.log('form is submitted');
+		}
         e.preventDefault();
         if ($("#campaign_form").valid()) {
            // jsonrpc_startproject(project, campaign, start_urls, download_delay=30, depth=1):

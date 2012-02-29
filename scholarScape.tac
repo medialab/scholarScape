@@ -24,7 +24,6 @@ from pymongo import Connection, objectid
 from pymongo.errors import AutoReconnect
 from scholar.scholar.duplicates import remove_duplicates 
 
-
 # Read config file and fill in mongo and scrapyd config files with custom values
 # try to connect to DB, send egg to scrapyd server
 # then start twisted server
@@ -538,7 +537,13 @@ class scholarScape(jsonrpc.JSONRPC):
             return {"code":"ok","message" : "Campaign " + campaign_name + " was deleted successfully"}
         except Exception as e:
             return {"code" :"fail", "message" : str(e)}
-        
+	
+	def jsonrpc_submit_login(self, login, password) :
+		return {'code' : 'fail', 'message' : str('Return from jsonrpc_submit_login.')}
+		# try :
+		# except Exception as e :
+			
+
 class Downloader(resource.Resource):
     isLeaf = True
     def render_GET(self, request):

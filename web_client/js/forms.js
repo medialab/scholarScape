@@ -380,5 +380,15 @@ cancel_campaign = function () {
 
         })      
     });
+	
+	$('#submit_login').click(function(e) {
+		var login = $('#login').val();
+		var password = $('#password').val();
+		call('submit_login', new Array(login, password), function(data) {
+			if (console && console.log) {
+				console.log(data);
+			}
+		});
+	});
     
 });
