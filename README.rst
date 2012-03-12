@@ -67,8 +67,7 @@ You can now install all the dependencies scholarScape relies upon. It is recomme
     sudo easy_install scrapy 
     sudo easy_install pymongo 
     sudo easy_install pystache
-    sudo easy_install levenshtein
-
+    sudo easy_install python-levenshtein
 
     bzr branch lp:txjsonrpc
     cd txjsonrpc
@@ -77,7 +76,7 @@ You can now install all the dependencies scholarScape relies upon. It is recomme
     rm -rf txjsonrpc/
 
     curl http://pypi.python.org/packages/source/n/networkx/networkx-1.6.tar.gz#md5=a5e62b841b30118574b57d0eaf1917ca | tar zx
-    cd network-1.6
+    cd networkx-1.6
     sudo python setup.py install
     
 Fork some code
