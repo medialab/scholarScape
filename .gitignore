@@ -15,3 +15,5 @@ scholar/project.egg-info/
 # Config files #
 ################
 *twistd.pid
+config.json
+users.json
