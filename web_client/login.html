@@ -1,16 +1,12 @@
-<SCRIPT LANGUAGE="JavaScript"><!--
-function myFunction() {
-    return false;    
-}
-//--></SCRIPT>
-<form onSubmit="return myFunction();">
-	<div>
-		<label>Login</label><input id="login" type="text" maxlength="255" value=""/> 
-	</div>
-	<br/>
-	<div>
-		<label>Password</label><input id="password" type="text" maxlength="255" value=""/> 
-	</div>
-	<br/>
-	<input id="submit_login" type="submit" value="Log in"/>
+<h2>Login</h2>
+<form id="login_form" action="?page=index" method="POST">
+	<fieldset>
+		<label>Login</label>
+		<input name="login" id="login" class="required" type="text" maxlength="255" value=""/>
+		<br>
+		<label>Password</label>
+		<input name="password" id="password" class="required" type="password" maxlength="255" value=""/>
+		<br>
+		<input type="submit" value="Log in">
+	</fieldset>
 </form>

@@ -1,35 +1,45 @@
-import json
-import networkx as nx
 import os
-import pystache
+import json
 import pprint
-import shlex
-import subprocess
 import urllib
 import urllib2
-import zipfile
-from random import getrandbits
-from urllib import quote_plus as qp
-
-from twisted.application import service, internet
-from twisted.internet import  threads
-from twisted.python import log
-from twisted.web import server, resource, static
-from twisted.web.static import File
-from txjsonrpc.web import jsonrpc
-from contextlib import nested
+import pystache
+import subprocess
 from datetime import date
-from datetime import datetime
-from pymongo import Connection, objectid
-from pymongo.errors import AutoReconnect
-from scholar.scholar.duplicates import remove_duplicates 
+from contextlib import nested
+from txjsonrpc.web import jsonrpc
+from urllib import quote_plus as qp
+from pymongo import Connection, errors, objectid
+from zope.interface import implements, Interface
+from twisted.protocols import basic
+from twisted.web import resource, server, static
+from twisted.web.server import NOT_DONE_YET
+from twisted.application import service, internet
+from twisted.cred import checkers, credentials, portal
+
+class IUser(Interface):
+    '''A user account.
+    '''
+
+    def getUserName(self):
+        '''Returns the name of the user account.
+        '''
+
+class User(object):
+    implements(IUser)
+
+    def __init__(self, name):
+        self.__name = name
+
+    def getUserName(self):
+        return self.__name
 
 # Read config file and fill in mongo and scrapyd config files with custom values
 # try to connect to DB, send egg to scrapyd server
 # then start twisted server
-print "Loading config file..."
+print 'Loading config file...'
 try :
-    with open("config.json","r") as config_file:
+    with open('config.json', 'r') as config_file:
         config = json.load(config_file)
 except IOError as e:
     print "Could not open config file"
@@ -43,7 +53,7 @@ except ValueError as e:
 try :
     Connection("mongodb://" + config['mongo']['user'] + ":" + 
             config['mongo']['passwd'] + "@" + config['mongo']['host'] + ":" + str(config['mongo']['port']) + "/" + config['mongo']['database'] )
-except AutoReconnect:
+except errors.AutoReconnect:
     print "Could not connect to mongodb server", config['mongo']
     exit()
 
@@ -72,7 +82,7 @@ except IOError as e:
 # Deploy the egg     
 print "Sending scholarScrape's scrapy egg to scrapyd server..."
 os.chdir("scholar")
-p = subprocess.Popen(['scrapy','deploy'], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+p = subprocess.Popen(['scrapy', 'deploy'], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 output, errors = p.communicate()
 print output, errors
 try :
@@ -96,27 +106,61 @@ data_dir = os.path.join(root_dir,config["data_dir"])
 
 class Home(resource.Resource):
     isLeaf = False
- 
+    
+    def __init__(self):
+        resource.Resource.__init__(self)
+    
     def getChild(self, name, request):
         if name == '':
             return self
         return resource.Resource.getChild(self, name, request)
- 
+    
     def render_GET(self, request):
-        request.setHeader("Content-Type", "text/html; charset=utf-8")
-        if "page" in request.args and request.args["page"][0] != "layout":
-            path = os.path.join(web_client_dir, "%s.html" % request.args['page'][0])
-            path = path if os.path.exists(path) else  os.path.join(web_client_dir, "404.html")
-        else :
-            path = os.path.join(web_client_dir, "index.html")
-
-        layout_path = os.path.join(web_client_dir, "layout.html")
-        with nested(open(path, "r"), open(layout_path, "r")) as (fpage, flayout):
-            layout = flayout.read().decode("utf-8")
-            page = fpage.read().decode("utf-8")
-            content = pystache.render(layout, { "contenu" : page })
-
+        request.setHeader('Content-Type', 'text/html; charset=utf-8')
+        # Get session user
+        session = request.getSession()
+        user = session.getComponent(IUser)
+        # If the user is not connected, redirection to the login page
+        if not user :
+            launch = False
+            explore = False
+            logout = False
+            path = os.path.join(web_client_dir, 'login.html')
+        else:
+            launch = user.getUserName() == 'medialab'
+            explore = True
+            logout = True
+            if 'page' in request.args and request.args['page'][0] != 'layout':
+                # If the page is login then reset user session
+                if request.args['page'][0] == 'login' :
+                    session.unsetComponent(IUser)
+                    launch = False
+                    explore = False
+                    logout = False
+                path = os.path.join(web_client_dir, "%s.html" % request.args['page'][0])
+                path = path if os.path.exists(path) else os.path.join(web_client_dir, '404.html')
+            else:
+                path = os.path.join(web_client_dir, 'index.html')
+        layout_path = os.path.join(web_client_dir, 'layout.html')
+        with nested(open(path, 'r'), open(layout_path, "r")) as (fpage, flayout):
+            layout = flayout.read().decode('utf-8')
+            page = fpage.read().decode('utf-8')
+            content = pystache.render(layout, {'contenu': page, 'launch': launch, 'explore': explore, 'logout': logout})
         return content.encode('utf-8')
+
+    def render_POST(self, request) :
+        login = request.args['login'][0]
+        password = request.args['password'][0]
+        # If the user exists and the password matches
+        if login in config['users'] and config['users'][login] == password :
+            user = User(login)
+            session = request.getSession()
+            session.setComponent(IUser, user)
+            request.args['page'][0] = 'index'
+            return self.render_GET(request)
+        else :
+            request.args['page'][0] = 'login'
+            return self.render_GET(request)
 
 def _connect_to_db():
     """ attempt to connect to mongo database based on value in config_file
@@ -132,7 +176,7 @@ def _connect_to_db():
         c = Connection("mongodb://" + user +  ":" + passwd  + "@" + host + ":" + str(port) + "/" + db)
         return c[db]
     except :
-        print "Could not connect to the database"
+        print 'Could not connect to the database'
         exit()
 
 def scholarize(query="", nr_results_per_page="100", exact="", at_least_one="",
@@ -157,7 +201,6 @@ def scholarize(query="", nr_results_per_page="100", exact="", at_least_one="",
              btnG=Search+Scholar&hl=en& \
              as_subj=" + str.join('&as_subj',areas) ).replace(" ","")
 
-
 class scholarScape(jsonrpc.JSONRPC):
     """
     JSON-RPC interface
@@ -166,7 +209,7 @@ class scholarScape(jsonrpc.JSONRPC):
     addSlash = True
     projects = []
     
-    def jsonrpc_start_project(self,project_name):
+    def jsonrpc_start_project(self, project_name):
         """JSON-RPC method to start a project"""
         # checking if projects already exists
         if project_name not in db.collection_names() :
@@ -229,28 +272,25 @@ class scholarScape(jsonrpc.JSONRPC):
         db[collection_name].update({"_id" : dup_id}, {"$set" : {"human_say" : is_duplicate}})
         print dup_id
         print db["__dup__"+project+"-"+campaign].find_one({"_id" : dup_id})['human_say']
-        print
         if is_duplicate :
             return "Has been marked as duplicate"
         return "Has been unmarked as duplicate"
     
-    def jsonrpc_list_campaigns(self, project_name):
+    def jsonrpc_list_campaigns(self, project_name) :
         """
         JSON-RPC method to get the lists of all the campaigns in a particular
         project.
         """
-        collection=db[project_name]
-
-        campaigns=[campaign for campaign in collection.find({'download_delay' : {'$exists':True}},{"_id":0}) ]
-        return [project_name,campaigns]
+        collection = db[project_name]
+        campaigns = [campaign for campaign in collection.find({'download_delay' : {'$exists': True}}, {'_id': 0}) ]
+        return [project_name, campaigns]
     
     def jsonrpc_list_all_campaigns(self) :
         """
         JSON-RPC method Return a sorted array of arrays containing all the 
         projects with all the campaigns
         """
-        collection_names=self.jsonrpc_list_project()
-        
+        collection_names = self.jsonrpc_list_project()
         projects = []
         for collection_name in collection_names:
             collection=db[collection_name]
@@ -445,7 +485,6 @@ class scholarScape(jsonrpc.JSONRPC):
         nx.write_gexf(g,filename)
         return filename
         
-        
     def jsonrpc_export_duplicates(self, project, campaign) :
         g = nx.Graph()
         collection = db[project]
@@ -460,7 +499,6 @@ class scholarScape(jsonrpc.JSONRPC):
         nx.write_gexf(g,filename)
         return filename
     
-    #TODO TODO TODO
     def jsonrpc_export_json(self, project, campaign) :
         print "Dumping database..."
         if campaign == "*" : campaign = ""
@@ -484,7 +522,6 @@ class scholarScape(jsonrpc.JSONRPC):
     def jsonrpc_export_zip(self,project_name) :
         json_file = self.jsonrpc_export_json(project_name)
         gexf_file = self.jsonrpc_export_gexf(project_name)
-
         filename = os.path.join(os.path.dirname(__file__), data_dir, "zip", project_name + str(getrandbits(128)) + ".zip" )
         zip_file = zipfile.ZipFile(filename,'w',compression=zipfile.ZIP_DEFLATED)
         zip_file.write(json_file)
@@ -534,51 +571,34 @@ class scholarScape(jsonrpc.JSONRPC):
             collection = db[project_name]
             collection.remove({"campaign":campaign_name})
             collection.remove({"download_delay":{"$exists":True}, "name":campaign_name})
-            return {"code":"ok","message" : "Campaign " + campaign_name + " was deleted successfully"}
+            return {"code":"ok", "message" : "Campaign " + campaign_name + " was deleted successfully"}
         except Exception as e:
             return {"code" :"fail", "message" : str(e)}
-	
-	def jsonrpc_submit_login(self, login, password) :
-		return {'code' : 'fail', 'message' : str('Return from jsonrpc_submit_login.')}
-		# try :
-		# except Exception as e :
-			
 
 class Downloader(resource.Resource):
     isLeaf = True
     def render_GET(self, request):
         try :
             file_path = request.args['file'][0]
-            request.setHeader('Content-Disposition', 'attachment;filename='+request.args['file'][0].split("/")[-1]) 
+            request.setHeader('Content-Disposition', 'attachment;filename=' + request.args['file'][0].split('/')[-1])
             return open(file_path).read()
         except Exception as e:
-            return "There was an error " + " " +str(e) 
+            return 'There was an error : ' + str(e)
 
 db =  _connect_to_db()
-application = service.Application("ScholarScape server. Receives JSON-RPC Requests and also serves the client.")
+
 root = Home()
-
-manageJson = scholarScape()
 root.putChild('downloader', Downloader())
+root.putChild('js', static.File(os.path.join(root_dir, web_client_dir, 'js')))
+root.putChild('css', static.File(os.path.join(root_dir, web_client_dir, 'css')))
+root.putChild('fonts', static.File(os.path.join(root_dir, web_client_dir, 'fonts')))
+root.putChild('images', static.File(os.path.join(root_dir, web_client_dir, 'images')))
+manageJson = scholarScape()
 root.putChild('json', manageJson)
-root.putChild('js', static.File(os.path.join(root_dir, web_client_dir,"js")))
-root.putChild('css', static.File(os.path.join(root_dir, web_client_dir,"css")))
-root.putChild('fonts', static.File(os.path.join(root_dir, web_client_dir,"fonts")))
-root.putChild('images', static.File(os.path.join(root_dir, web_client_dir,"images")))
-data = File("data")
-root.putChild("data", data)
+data = static.File('data')
+root.putChild('data', data)
+
+application = service.Application('ScholarScape server. Receives JSON-RPC Requests and also serves the client.')
 site = server.Site(root)
-server = internet.TCPServer(config["twisted"]["port"], site)
-server.setServiceParent(application)
-
-
-
-
-
-
-
-
-
-
-
-
+srv = internet.TCPServer(config['twisted']['port'], site)
+srv.setServiceParent(application)

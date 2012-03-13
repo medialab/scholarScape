@@ -1,5 +1,17 @@
+# Compiled source #
+###################
 *.pyc
+
+# OS generated files #
+######################
+.DS_Store*
+
+# Data folder #
+###############
 data/
 scholar/build
 scholar/project.egg-info/
+
+# Config files #
+################
 *twistd.pid

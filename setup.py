@@ -57,10 +57,6 @@ setup_args = {
     'author' : 'Patrick Browne',
     'author_email' : 'pt.browne@gmail.com',
     'url' : 'http://www.google.fr'
-
 }
 
 setup(**setup_args)
-
-
-

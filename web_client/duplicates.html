@@ -1,7 +1,7 @@
 <script type="text/javascript" language="javascript" charset="utf-8">
-highlight_menu("explore");
+highlight_menu('explore');
 $.extend({
-  getUrlVars: function(){
+  getUrlVars: function() {
     var vars = [], hash;
     var hashes = window.location.href.slice(window.location.href.indexOf('?') + 1).split('&');
     for(var i = 0; i < hashes.length; i++)
@@ -46,7 +46,6 @@ $( function (e) {
             
         $("#number_duplicates_already_checked").text(parseInt($("#number_duplicates_already_checked").text())+1)
     });
-    console.log(dup_project, dup_campaign)
     var give_me_duplicates = function () {
         $("#infos_project").append("<tr id='ajaxloader'><td><img src='images/ajax-loader.gif'></td></tr>");
         call("give_me_duplicates",new Array(dup_project, dup_campaign,NB_ITEMS_LIMIT),function(data) { // JSON RPC call to get info about the campaign unbundling in the project test_data
@@ -61,21 +60,17 @@ $( function (e) {
               if(duplicate[0][1] == "")
                 duplicate[0][1]="javascript: ghost_print(\"no url returned by google Scholar for that publication\")"
               if(duplicate[1][1] == "")
-                duplicate[1][1]="javascript: ghost_print(\"no url returned by google Scholar for that publication\")"
-  
-                  html = ""
-                  html += "<tr style='border:1px solid black'>"
-                  html += "<td><a href='"+duplicate[0][1]+"'>"+duplicate[0][0]+"</a></td><td><a href='"+duplicate[1][1]+"'>"+duplicate[1][0]+"</a></td><td>"+duplicate[2]+"</td><td>"
-                  html += "<button number='"+i+"' class='human_check' value='True' id='"+duplicate[3]+"'>ok</button>"
-                  html += "<button number='"+i+"' class='human_check' value='False' id='"+duplicate[3]+"'>no</button></td>"
-                  html += "</tr>"
-                  $("#infos_project").append(html)
+                duplicate[1][1] = "javascript: ghost_print(\"no url returned by google Scholar for that publication\")";
+                  html = "";
+                  html += "<tr style='border:1px solid black'>";
+                  html += "<td><a href='"+duplicate[0][1]+"'>"+duplicate[0][0]+"</a></td><td><a href='"+duplicate[1][1]+"'>"+duplicate[1][0]+"</a></td><td>"+duplicate[2]+"</td><td>";
+                  html += "<button number='"+i+"' class='human_check' value='True' id='"+duplicate[3]+"'>ok</button>";
+                  html += "<button number='"+i+"' class='human_check' value='False' id='"+duplicate[3]+"'>no</button></td>";
+                  html += "</tr>";
+                  $("#infos_project").append(html);
             }
-
-
         });
-                    $("tr#ajaxloader").remove()
-
+		$("tr#ajaxloader").remove();
     };
     give_me_duplicates();
 });
@@ -90,6 +85,6 @@ $( function (e) {
 <p>
     You have already checked <span id="number_duplicates_already_checked"></span> out of <span id="total_number_of_possible_duplicates"></span>.
 </p>
-<table id="infos_project" style="font-size:0.8em">
-<thead><th>Title 1</th><th>Title 2</th><th>Similarity</th></thead>
+<table id="infos_project" style="font-size:0.8em" width="100%">
+	<thead><th>Title 1</th><th>Title 2</th><th>Similarity</th></thead>
 </table>

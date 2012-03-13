@@ -1,100 +1,83 @@
 <script type="text/javascript" language="javascript" charset="utf-8">
 // <![CDATA[
-    highlight_menu("explore");
-    $( function () {
-
-    $dialog = $('#dialog_export_gexf').dialog({
-	    autoOpen: false,
-	    modal : true,
-	    title: 'Max Depth ?'
-    });
-    $('#add_sproject').click(function() { 
-        console.log("clicked")
-        $dialog.dialog('open');
-        // prevent the default action, e.g., following a link
-        return false;
-    });
-    
-
-    
-});        
-  
+	highlight_menu('explore');
+	$(function () {
+		$dialog = $('#dialog_export_gexf').dialog({
+			autoOpen: false,
+			modal : true,
+			title: 'Max Depth ?'
+		});
+		$('#add_sproject').click(function() { 
+			console.log('clicked')
+			$dialog.dialog('open');
+			// prevent the default action, e.g., following a link
+			return false;
+		});
+	});        
 // ]]>
 </script>
 
 <div style="display:none">
-<div id="dialog_export_gexf" class="dialog">
-    <form id="export_gexf_form">
-                    <input type="text" id="e_d" name="max_depth" class="required"/><br/>
-                    <input type="submit" id="submit_e_gexf" value="Export!">
-    </form>
+	<div id="dialog_export_gexf" class="dialog">
+		<form id="export_gexf_form">
+			<input type="text" id="e_d" name="max_depth" class="required"/><br/>
+			<input type="submit" id="submit_e_gexf" value="Export!">
+		</form>
+	</div>
 </div>
-</div>
-
-
 
 <h2>Explore</h2>
 <p style="margin-bottom:1em">
-    Here is the place where you manage all your projects and campaigns.
+	Here is the place where you manage all your projects and campaigns.
 </p>
 <div id="list_projects" class="grid_3 alpha">
-    <div>
-    <h3>Projects</h3>
-        <ul id="list_projects_campaigns">
-        </ul>
-    </div>
+	<div>
+		<h3>Projects</h3>
+		<ul id="list_projects_campaigns"></ul>
+	</div>
 </div>
 <div id="info_project" class="grid_6 omega">
-
-        <h3>Infos</h3>
-        <div id="please_select">Please select a project/campaign first</div>
-        <div id="infos_campaign" style="display:none">
-            <h4 class="campaign_name"></h4>
-            <table>        
-                <tr><td>Date</td><td id="i_date"></td></tr>
-                <tr><td>Download Delay</td><td id="i_download_delay"></td></tr>
-                <tr><td>Depth</td><td id="i_depth"></td></tr>
-                <tr><td>Status</td><td id="i_status"></td></tr>
-                <tr><td>Number of items</td><td id="i_nb_items"></td></tr>
-                <tr><td>Number of duplicates family</td><td id="i_nb_duplicates"></td></tr>
-            </table>
-            <p>
-                <input type="button" class="button_e_gexf" value="Export Graph">
-                <input type="button" id="export_duplicates" value="Export Duplicates">
-<!--                <input type="button" id="button_e_json" value="Export database (JSON)">-->
-<!--                <input type="button" id="button_e_zip" value="Export ZIP">-->
-            </p>
-
-            <p>
-                <input type="button" id="last_items_switch" value="Last items scrapped"/>
-            </p>
-            <div id="last_items" style="display:none; overflow:auto; padding:0.5em;height:300px ">
-            </div>
-            <p>
-                <input type="button" id="start_urls_switch" value="Start urls"/>
-            </p>
-            <div id="start_urls" style="display:none; overflow:auto; padding:0.5em; font-size:0.8em">
-            </div>
-            <p>
-            <button id="remove_duplicates">launch the remove duplicates process</button><br>
-            <a href="" id="check_duplicates">Check for duplicates</a>
-            </p>
-            
-            <button  id="cancel_campaign">Cancel</button>
-        </div>
-        <div id="infos_project" style="display:none">
-            <h4 class="campaign_name"></h4>
-            <table>        
-                <tr><td>Number of campaigns</td><td id="i_nb_campaigns"></td></tr>
-                <tr><td>Total number of items</td><td id="i_total_number_items"></td></tr>
-            </table>
-            <p>
-                <input type="button" class="button_e_gexf" value="Export Graph">
-                <input type="button" id="button_e_json" value="Export database (JSON)">
-<!--                <input type="button" id="button_e_zip" value="Export ZIP">-->
-            </p>
-        </div>
-        
+	<h3>Infos</h3>
+	<div id="please_select">Please select a project/campaign first</div>
+	<div id="infos_campaign" style="display:none">
+		<h4 class="campaign_name"></h4>
+		<table>
+			<tr><td>Date</td><td id="i_date"></td></tr>
+			<tr><td>Download Delay</td><td id="i_download_delay"></td></tr>
+			<tr><td>Depth</td><td id="i_depth"></td></tr>
+			<tr><td>Max start pages</td><td id="i_max_start_pages"></td></tr>
+			<tr><td>Max cites pages</td><td id="i_max_cites_pages"></td></tr>
+			<tr><td>Status</td><td id="i_status"></td></tr>
+			<tr><td>Number of items</td><td id="i_nb_items"></td></tr>
+			<tr><td>Number of duplicates family</td><td id="i_nb_duplicates"></td></tr>
+		</table>
+		<p>
+			<input type="button" class="button_e_gexf" value="Export Graph">
+			<input type="button" id="export_duplicates" value="Export Duplicates">
+		</p>
+		<p>
+			<input type="button" id="last_items_switch" value="Last items scrapped"/>
+		</p>
+		<div id="last_items" style="display:none; overflow:auto; padding:0.5em;height:300px "></div>
+		<p>
+			<input type="button" id="start_urls_switch" value="Start urls"/>
+		</p>
+		<div id="start_urls" style="display:none; overflow:auto; padding:0.5em; font-size:0.8em"></div>
+		<p>
+			<button id="remove_duplicates">Launch the automatic remove duplicates process</button><br>
+			<a href="" id="check_duplicates">Manually check for duplicates</a>
+		</p>
+		<button  id="cancel_campaign">Cancel</button>
+	</div>
+	<div id="infos_project" style="display:none">
+		<h4 class="campaign_name"></h4>
+		<table>        
+			<tr><td>Number of campaigns</td><td id="i_nb_campaigns"></td></tr>
+			<tr><td>Total number of items</td><td id="i_total_number_items"></td></tr>
+		</table>
+		<p>
+			<input type="button" class="button_e_gexf" value="Export Graph">
+			<input type="button" id="button_e_json" value="Export database (JSON)">
+		</p>
+	</div>
 </div>
-
-
