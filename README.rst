@@ -67,15 +67,16 @@ You can now install all the dependencies scholarScape relies upon. It is recomme
     sudo easy_install scrapy 
     sudo easy_install pymongo 
     sudo easy_install pystache
-    sudo easy_install levenshtein
-
+    sudo easy_install python-levenshtein
 
     bzr branch lp:txjsonrpc
     cd txjsonrpc
     sudo python setup.py install
+    cd ../
+    rm -rf txjsonrpc/
 
     curl http://pypi.python.org/packages/source/n/networkx/networkx-1.6.tar.gz#md5=a5e62b841b30118574b57d0eaf1917ca | tar zx
-    cd network-1.6
+    cd networkx-1.6
     sudo python setup.py install
     
 Fork some code
@@ -84,6 +85,10 @@ Fork some code
 The latest version of scholarScape is always available at `github <http://github.com/medialab/scholarScape/>`_. To clone the repository ::
 
     git clone https://github.com/medialab/scholarScape.git
+
+You can put scholarScape anywhere you want but if you want to follow the Linux filesystem hierarchy 
+(explained `here <http://serverfault.com/questions/96416/should-i-install-linux-applications-in-var-or-opt>`, you might 
+want to put it in /usr/local/scholarScape/.
 
 Setup Mongodb
 -------------
