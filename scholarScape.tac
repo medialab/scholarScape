@@ -1,15 +1,23 @@
+###################
+##   TODO LIST   ##
+###################
+# _ Change users managment to database
+# _ Repair the tor proxy
+# _ Improve the duplicates process
+
 import os
 import json
 import pprint
 import urllib
 import urllib2
+import hashlib
 import pystache
 import subprocess
 from datetime import date
 from contextlib import nested
 from txjsonrpc.web import jsonrpc
 from urllib import quote_plus as qp
-from pymongo import Connection, errors, objectid
+from pymongo import Connection, errors, json_util, objectid
 from zope.interface import implements, Interface
 from twisted.protocols import basic
 from twisted.web import resource, server, static
@@ -42,11 +50,24 @@ try :
     with open('config.json', 'r') as config_file:
         config = json.load(config_file)
 except IOError as e:
-    print "Could not open config file"
+    print 'Could not open config file'
     print e
     exit()    
 except ValueError as e:
-    print "Config file is not valid JSON", e
+    print 'Config file is not valid JSON', e
+    exit()
+
+# Read config file and fill in mongo and scrapyd config files with custom values
+# Try to connect to DB, send egg to scrapyd server
+print 'Loading users file...'
+try :
+    with open('users.json', 'r') as users_file:
+        users = json.load(users_file)
+except IOError as e:
+    print 'Could not open users file', e
+    exit()    
+except ValueError as e:
+    print 'Users file is not valid JSON', e
     exit()
 
 # Check if the DB is available
@@ -58,51 +79,51 @@ except errors.AutoReconnect:
     exit()
 
 # Render the pipeline template 
-print "Rendering pipelines.py with values from config.json..."
-try :
-    with nested(open("scholar/scholar/pipelines-template.py", "r"), open("scholar/scholar/pipelines.py", "w")) as (template, generated):
-        generated.write(pystache.render(template.read(), config['mongo']))
-except IOError as e:
-    print "Could not open either pipeline-template file or pipeline file"
-    print "scholar/scholar/pipelines-template.py", "scholar/scholar/pipelines.py"
-    print e
-    exit() 
+# print "Rendering pipelines.py with values from config.json..."
+# try :
+    # with nested(open("scholar/scholar/pipelines-template.py", "r"), open("scholar/scholar/pipelines.py", "w")) as (template, generated):
+        # generated.write(pystache.render(template.read(), config['mongo']))
+# except IOError as e:
+    # print "Could not open either pipeline-template file or pipeline file"
+    # print "scholar/scholar/pipelines-template.py", "scholar/scholar/pipelines.py"
+    # print e
+    # exit() 
 
 # Render the scrapy cfg  
-print "Rendering scrapy.cfg with values from config.json..."
-try :
-    with nested(open("scholar/scrapy-template.cfg", "r"), open("scholar/scrapy.cfg", "w")) as (template, generated):
-        generated.write(pystache.render(template.read(), config['scrapyd']))
-except IOError as e:
-    print "Could not open either scrapy.cfg template file or scrapy.cfg"
-    print "scholar/scrapy-template.cfg", "scholar/scrapy.cfg"
-    print e
-    exit() 
+# print "Rendering scrapy.cfg with values from config.json..."
+# try :
+    # with nested(open("scholar/scrapy-template.cfg", "r"), open("scholar/scrapy.cfg", "w")) as (template, generated):
+        # generated.write(pystache.render(template.read(), config['scrapyd']))
+# except IOError as e:
+    # print "Could not open either scrapy.cfg template file or scrapy.cfg"
+    # print "scholar/scrapy-template.cfg", "scholar/scrapy.cfg"
+    # print e
+    # exit() 
 
 # Deploy the egg     
-print "Sending scholarScrape's scrapy egg to scrapyd server..."
-os.chdir("scholar")
-p = subprocess.Popen(['scrapy', 'deploy'], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-output, errors = p.communicate()
-print output, errors
-try :
-    output = json.loads(output)
-    if output['status'] != "ok" :
-        print "There was a problem sending the scrapy egg."
-        print output, errors    
-        exit()
-except ValueError:
-    print "There was a problem sending the scrapy egg."
-    print output, errors     
-    exit()
-print "The egg was successfully sent to scrapyd server", config['scrapyd']['host'], "on port", config['scrapyd']['port']
-os.chdir("..")
+# print "Sending scholarScrape's scrapy egg to scrapyd server..."
+# os.chdir("scholar")
+# p = subprocess.Popen(['scrapy', 'deploy'], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+# output, errors = p.communicate()
+# print output, errors
+# try :
+    # output = json.loads(output)
+    # if output['status'] != "ok" :
+        # print "There was a problem sending the scrapy egg."
+        # print output, errors    
+        # exit()
+# except ValueError:
+    # print "There was a problem sending the scrapy egg."
+    # print output, errors     
+    # exit()
+# print "The egg was successfully sent to scrapyd server", config['scrapyd']['host'], "on port", config['scrapyd']['port']
+# os.chdir("..")
 
 print "Starting the server"
 root_dir = os.path.dirname(__file__)    
 pp = pprint.PrettyPrinter(indent=4)
-web_client_dir = "web_client"
-data_dir = os.path.join(root_dir,config["data_dir"])
+web_client_dir = 'web_client'
+data_dir = os.path.join(root_dir, config['data_dir'])
 
 class Home(resource.Resource):
     isLeaf = False
@@ -110,8 +131,8 @@ class Home(resource.Resource):
     def __init__(self):
         resource.Resource.__init__(self)
     
-    def getChild(self, name, request):
-        if name == '':
+    def getChild(self, name, request) :
+        if name == '' :
             return self
         return resource.Resource.getChild(self, name, request)
     
@@ -122,20 +143,38 @@ class Home(resource.Resource):
         user = session.getComponent(IUser)
         # If the user is not connected, redirection to the login page
         if not user :
+            login = ''
             launch = False
             explore = False
+            admin = False
             logout = False
             path = os.path.join(web_client_dir, 'login.html')
         else:
-            launch = user.getUserName() == 'medialab'
-            explore = True
-            logout = True
+            # Send the salt and hashed login as an hidden tag
+            login = hashlib.md5(config['salt'] + user.getUserName()).hexdigest()
+            role = users[user.getUserName()]['role']
+            if role == 'explorer' :
+                launch = False
+                explore = True
+                admin = False
+                logout = True
+            elif role == 'launcher' :
+                launch = True
+                explore = True
+                admin = False
+                logout = True
+            elif role == 'admin' :
+                launch = True
+                explore = True
+                admin = True
+                logout = True
             if 'page' in request.args and request.args['page'][0] != 'layout':
                 # If the page is login then reset user session
                 if request.args['page'][0] == 'login' :
                     session.unsetComponent(IUser)
                     launch = False
                     explore = False
+                    admin = False
                     logout = False
                 path = os.path.join(web_client_dir, "%s.html" % request.args['page'][0])
                 path = path if os.path.exists(path) else os.path.join(web_client_dir, '404.html')
@@ -145,21 +184,37 @@ class Home(resource.Resource):
         with nested(open(path, 'r'), open(layout_path, "r")) as (fpage, flayout):
             layout = flayout.read().decode('utf-8')
             page = fpage.read().decode('utf-8')
-            content = pystache.render(layout, {'contenu': page, 'launch': launch, 'explore': explore, 'logout': logout})
+            content = pystache.render(layout, {'contenu' : page, 'login' : login, 'launch' : launch, 'explore' : explore, 'admin' : admin, 'logout' : logout})
         return content.encode('utf-8')
 
     def render_POST(self, request) :
-        login = request.args['login'][0]
-        password = request.args['password'][0]
-        # If the user exists and the password matches
-        if login in config['users'] and config['users'][login] == password :
-            user = User(login)
-            session = request.getSession()
-            session.setComponent(IUser, user)
-            request.args['page'][0] = 'index'
-            return self.render_GET(request)
-        else :
-            request.args['page'][0] = 'login'
+        # Collect common args
+        page = request.args['page'][0]
+        login = request.args['form_login'][0]
+        password = request.args['form_password'][0]
+        # If the request comes from the login page
+        if page == 'login' :
+            # If the user exists and the password matches
+            if login in users and users[login]['password'] == password :
+                user = User(login)
+                session = request.getSession()
+                session.setComponent(IUser, user)
+                request.args['page'][0] = 'index'
+                return self.render_GET(request)
+            else :
+                request.args['page'][0] = 'login'
+                return self.render_GET(request)
+        # If the request comes from the admin page
+        elif page == 'admin' :
+            user_role = request.args['form_user_role'][0]
+            collections = [request.args[collection][0] for collection in request.args if collection.startswith('project_')]
+            # Check if user doesn't exist
+            if login not in users :
+                # Add user to the json file
+                users[login] = {'password' : password, 'role' : user_role, 'collections' : collections}
+                file = open('users.json', 'w')
+                json.dump(users, file, sort_keys = True, indent = 4)
+                file.close()
             return self.render_GET(request)
 
 def _connect_to_db():
@@ -210,7 +265,10 @@ class scholarScape(jsonrpc.JSONRPC):
     projects = []
     
     def jsonrpc_start_project(self, project_name):
-        """JSON-RPC method to start a project"""
+        """
+        JSON-RPC method to start a project
+        """
+        
         # checking if projects already exists
         if project_name not in db.collection_names() :
             db.create_collection(project_name)
@@ -218,52 +276,65 @@ class scholarScape(jsonrpc.JSONRPC):
         else :
             return dict(code = "fail", message = "Sorry, error" )
     
-    def jsonrpc_list_project(self):
-        """JSON-RPC method to get the lists of all the projects"""
-        collection_names=db.collection_names()
-        collection_names.remove('system.indexes')
-        collection_names.remove('system.users')
-        collection_names = [collection_name for collection_name in collection_names if not collection_name.startswith("__")]
+    def jsonrpc_list_project(self, login):
+        """
+        JSON-RPC method to get the lists of all the projects
+        """
+        
+        # Check for the connected login
+        u = None
+        r = None
+        for user in users :
+            if login == hashlib.md5(config['salt'] + user).hexdigest() :
+                u = user
+                r = users[user]['role']
+        if u is None :
+            collection_names = []
+        elif r == 'admin' :
+            collection_names = db.collection_names()
+            collection_names.remove('system.indexes')
+            collection_names.remove('system.users')
+            collection_names = [collection_name for collection_name in collection_names if not collection_name.startswith("__")]
+        else :
+            collection_names = users[u]['collections']
         return collection_names
     
     def jsonrpc_give_me_duplicates(self, project, campaign, limit) :
-        """Return lists of duplicates"""
-        
+        """
+        Return lists of duplicates
+        """
         TITLE_THRESOLD = 0.8
-        
-        dup_col = db["__dup__"+project+"-"+campaign]
+        dup_col = db["__dup__" + project + "-" + campaign]
         col = db[project]
         total_number_of_possible_duplicates = dup_col.find({  "title_score" : {"$gt" : TITLE_THRESOLD, "$lt" : 1} }).count()
         number_duplicates_already_checked = dup_col.find({  "title_score" : {"$gt" : TITLE_THRESOLD, "$lt" : 1}, "human_say" : {"$exists" : True}	}).count()
         possible_duplicates = dup_col.find({  "title_score" : {"$gt" : TITLE_THRESOLD, "$lt" : 1}, "human_say" : {"$exists" : False}	}).limit(limit)
-        
-        print "found "+str(possible_duplicates.count())+" possible duplicates" 
-        
-        duplicates=[]
+        print "found " + str(possible_duplicates.count()) + " possible duplicates"
         for pb in possible_duplicates :
-            pub1 = col.find_one( {"_id" : pb["_id1"] },{"title":1,"href":1})
-            pub2 = col.find_one( {"_id" : pb["_id2"] },{"title":1,"href":1})
+            pub1 = col.find_one( {"_id" : pb["_id1"] }, {"title":1, "href":1})
+            pub2 = col.find_one( {"_id" : pb["_id2"] }, {"title":1, "href":1})
             if pub1 and pub2 :
-                try : 
-                    duplicate=[[pub1['title'],pub1['href'] if 'href' in pub1 else ""],
-                           [pub2['title'],pub2['href'] if 'href' in pub2 else ""],
-                           round(pb["title_score"],2),
-                           str(pb["_id"])
-                           ]
-                    duplicates.append(duplicate)
-                except : 
-                    print "%s %s"%(pb["_id1"],pb["_id2"])
+                try :
+                    duplicates = {
+                        "pub1" : json.dumps(pub1, default = json_util.default),
+                        "pub2" : json.dumps(pub2, default = json_util.default),
+                        "score" : round(pb['title_score'], 2),
+                        "id" : str(pb['_id'])
+                    }
+                except Exception as e : 
+                    print "%s %s"%(pb["_id1"], pb["_id2"])
+                    print e
             else : 
                 if pub2 == None :
                     badpub = (pub2,pb["_id2"])
                 if pub1 == None : 
                     badpub = (pub1,pb["_id1"])
-                print "one duplicate not found %s %s" % badpub                 
-        
-        return (total_number_of_possible_duplicates,
-                number_duplicates_already_checked,
-                duplicates
-                )
+                print "one duplicate not found %s %s" % badpub
+        return {
+            "total_number_of_possible_duplicates" : total_number_of_possible_duplicates,
+            "number_duplicates_already_checked" : number_duplicates_already_checked,
+            "duplicates" : duplicates
+            }
     
     def jsonrpc_duplicate_human_check(self, project, campaign, dup_id, is_duplicate):
         collection_name = "__dup__"+project+"-"+campaign
@@ -282,23 +353,23 @@ class scholarScape(jsonrpc.JSONRPC):
         project.
         """
         collection = db[project_name]
-        campaigns = [campaign for campaign in collection.find({'download_delay' : {'$exists': True}}, {'_id': 0}) ]
+        campaigns = [campaign for campaign in collection.find({'download_delay' : {'$exists' : True}}, {'_id' : 0}) ]
         return [project_name, campaigns]
     
-    def jsonrpc_list_all_campaigns(self) :
+    def jsonrpc_list_all_campaigns(self, login) :
         """
         JSON-RPC method Return a sorted array of arrays containing all the 
         projects with all the campaigns
         """
-        collection_names = self.jsonrpc_list_project()
+        collection_names = self.jsonrpc_list_project(login)
         projects = []
         for collection_name in collection_names:
-            collection=db[collection_name]
-            campaigns=[campaign for campaign in collection.find({'download_delay' : {'$exists':True}},{"_id":0}) ]
-            projects.append([collection_name,sorted(campaigns,key=lambda x:x['name'])])
-        return sorted(projects,key=lambda x:x[0])
+            collection = db[collection_name]
+            campaigns = [campaign for campaign in collection.find({'download_delay' : {'$exists' : True}}, {'_id' : 0}) ]
+            projects.append([collection_name, sorted(campaigns, key = lambda x : x['name'])])
+        return sorted(projects, key = lambda x : x[0])
         
-    def jsonrpc_start_campaign(self, project, campaign, search_type, starts, download_delay=30, depth=1, max_start_pages=100, max_cites_pages=100, exact=False):
+    def jsonrpc_start_campaign(self, project, campaign, search_type, starts, download_delay = 30, depth = 1, max_start_pages = 100, max_cites_pages = 100, exact = False):
         """
         JSON-RPC method to start a campaign.
         """
@@ -306,8 +377,10 @@ class scholarScape(jsonrpc.JSONRPC):
         if collection.find({ "name" : campaign }).count() > 0 :
             return dict(code = "fail", message = "Already existing campaign : campaign could not be created")     
         
-        def scholarize_custom(x):
-            """method to return GS urls based on the choice of the user"""
+        def scholarize_custom(x) :
+            """
+            Method to return GS urls based on the choice of the user.
+            """
             kwargs = dict()
             
             if exact and search_type == "titles" :
@@ -322,7 +395,7 @@ class scholarScape(jsonrpc.JSONRPC):
 
         # preparation of the request to scrapyd
         url = 'http://%s:%s/schedule.json' % (config['scrapyd']['host'], config['scrapyd']['port']) 
-        values = [("project" , "scholar"),
+        values = [('project' , 'scholar'),
                   ('spider' , 'scholar_spider'),
                   ('project_name' , project),
                   ('setting' , 'DOWNLOAD_DELAY=' + str(download_delay)) ,
@@ -330,8 +403,7 @@ class scholarScape(jsonrpc.JSONRPC):
                   ('campaign_name' , campaign),  
                   ('max_start_pages' , max_start_pages),  
                   ('max_cites_pages' , max_cites_pages),  
-                  ('start_urls_' , str.join(";", [scholarize_custom(start) for start in filter(lambda x : x, starts)])),]
-        
+                  ('start_urls_' , str.join(';', [scholarize_custom(start) for start in filter(lambda x : x, starts)])),]
         data = urllib.urlencode(values)
         req = urllib2.Request(url, data)
         
@@ -339,29 +411,29 @@ class scholarScape(jsonrpc.JSONRPC):
         try :
             response = urllib2.urlopen(req)
         except urllib2.URLError as e:
-            result = dict(code = "fail", message = "Could not contact scrapyd server, maybe it's not started...")
+            result = dict(code = 'fail', message = 'Could not contact scrapyd server, maybe it\'s not started...')
             return result
         
         # reading the response
         results = json.loads(response.read())
         print results
-        if results['status'] == "ok":
-            result = dict(code = "ok", message = "The crawling campaign was successfully launched. You can see it in the Explore section.\n")
-            result['job_id'] = str(results["jobid"])
+        if results['status'] == 'ok' :
+            result = dict(code = 'ok', message = 'The crawling campaign was successfully launched. You can see it in the Explore section.\n')
+            result['job_id'] = str(results['jobid'])
             # creation of the campaign object in the DB
-            campaign =  {"name" : campaign,
-                         "date" : str(date.today()),
-                         "depth" : depth,
-                         "download_delay" : download_delay,
-                         "start_urls" : [scholarize_custom(start) for start in filter(lambda x : x, starts)],
-                         "job_id" : str(results["jobid"]),
-                         "max_start_pages" : max_start_pages,  
-                         "max_cites_pages" : max_cites_pages,  
-                         "status" : "alive",}
+            campaign =  {'name' : campaign,
+                         'date' : str(date.today()),
+                         'depth' : depth,
+                         'download_delay' : download_delay,
+                         'start_urls' : [scholarize_custom(start) for start in filter(lambda x : x, starts)],
+                         'job_id' : str(results['jobid']),
+                         'max_start_pages' : max_start_pages,  
+                         'max_cites_pages' : max_cites_pages,  
+                         'status' : 'alive',}
             collection.insert(campaign)   
             return result
         else :
-            result = dict(code = "fail", message = "There was an error telling scrapyd to launch campaign crawl")
+            result = dict(code = 'fail', message = 'There was an error telling scrapyd to launch campaign crawl.')
             return result
     
     
@@ -394,7 +466,7 @@ class scholarScape(jsonrpc.JSONRPC):
                 print "process %s stopped"%p.pid
 
             # put the blocking p.wait in a thread
-            d=threads.deferToThread(wait_for_process,project_name, campaign,p)
+            d = threads.deferToThread(wait_for_process,project_name, campaign,p)
             #log
             print "subprocess duplicates started" 
             return "process started with PID :%s"%(p.pid)
@@ -468,7 +540,7 @@ class scholarScape(jsonrpc.JSONRPC):
                     g.add_edge(source,target)
         
         #getting all the publications that are not children
-        not_children = {"download_delay" : {"$exists" : False}, "parent_id" : {"$exists" : False}} 
+        not_children = {"download_delay" : {"$exists" : False}, "parent_id" : {"$exists" : False}}
         if campaign != "*" :
             not_children["campaign"] = campaign
         for not_child in collection.find(not_children): 
@@ -534,11 +606,8 @@ class scholarScape(jsonrpc.JSONRPC):
         collection = db[project_name]
         nb_super   = collection.find({"campaign" : campaign_name, "nr_children" : {"$exists" : True}}).count()
         nb_items   = collection.find({"campaign" : campaign_name}).count()  - nb_super
-        last_items = list(collection.find({"campaign" : campaign_name }, 
-                                          {"_id" : False, "parent_id" : False} )
-                                    .limit(10).sort([ ("$natural", -1) ]) ) # most recent items
-        campaign     = collection.find({"download_delay" : {"$exists" : True},
-                                        "name" : campaign_name})[0]
+        last_items = list(collection.find({"campaign" : campaign_name }, {"_id" : False, "parent_id" : False}).limit(10).sort([("$natural", -1)])) # most recent items
+        campaign     = collection.find({"download_delay" : {"$exists" : True}, "name" : campaign_name})[0]
         del campaign['_id']
         
         retour = {"code" : "ok",
@@ -562,18 +631,18 @@ class scholarScape(jsonrpc.JSONRPC):
             for name in db.collection_names(): 
                 if name.startswith("__dup__" + project_name + "-") :
                     db.drop_collection(name) 
-            return {"code":"ok","message" : "Project " + project_name + " was deleted successfully"}
+            return {"code":"ok", "message" : "Project " + project_name + " was deleted successfully"}
         except Exception as e:
             return {"code" : "fail", "message" : str(e)}            
         
-    def jsonrpc_remove_campaign(self,project_name,campaign_name):
+    def jsonrpc_remove_campaign(self, project_name, campaign_name) :
         try :
             collection = db[project_name]
-            collection.remove({"campaign":campaign_name})
-            collection.remove({"download_delay":{"$exists":True}, "name":campaign_name})
-            return {"code":"ok", "message" : "Campaign " + campaign_name + " was deleted successfully"}
+            collection.remove({'campaign' : campaign_name})
+            collection.remove({'download_delay' : {'$exists' : True}, 'name' : campaign_name})
+            return {'code' : 'ok', 'message' : 'Campaign ' + campaign_name + ' was deleted successfully'}
         except Exception as e:
-            return {"code" :"fail", "message" : str(e)}
+            return {'code' : 'fail', 'message' : str(e)}
 
 class Downloader(resource.Resource):
     isLeaf = True

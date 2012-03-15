@@ -36,12 +36,14 @@
 			}
 			
 			var highlight_index = function(name) {
-				$('.menu_item').slice(0, -2).append('<div class="menu_magenta_flag"></div><div class="menu_magenta_flag_top"></div>');
+				$('.menu_item').slice(0, -3).append('<div class="menu_magenta_flag"></div><div class="menu_magenta_flag_top"></div>');
 				$('#tutorial').append('<div class="menu_grey_flag little"></div><div class="menu_grey_flag_top"></div>');
+				$('#admin').append('<div class="menu_grey_flag little"></div><div class="menu_grey_flag_top"></div>');
 				$('#logout').append('<div class="menu_grey_flag little"></div><div class="menu_grey_flag_top"></div>');
 			}
 		// ]]>
 		</script>
+		<input id="login" type="hidden" value="{{login}}"/>
 		<div class="result"></div>
 		<div id="wrapper">
 			<div id="container" class="container_14">
@@ -50,11 +52,14 @@
 					<div id="menu">
 						{{#launch}}
 						<div class="menu_item alpha grid_2 push_1" id="launch"><a href="?page=launch">launch</a></div>
-						{{/launch}} 
+						{{/launch}}
 						{{#explore}}
 						<div class="menu_item grid_2 push_1" id="explore"><a href="?page=explore">explore</a></div>
-						{{/explore}}     
+						{{/explore}}
 						<div class="menu_item grid_2 push_1" id="tutorial"><a href="?page=tutorial">help</a></div>
+						{{#admin}}
+						<div class="menu_item grid_2 push_1" id="admin"><a href="?page=admin">admin</a></div>
+						{{/admin}}
 						{{#logout}}
 						<div class="menu_item grid_2 push_1" id="logout"><a href="?page=login">logout</a></div>
 						{{/logout}}

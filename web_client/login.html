@@ -1,12 +1,20 @@
+<style> 
+    <!--
+		label {
+			float: left;
+			width: 125px;
+			display: block;
+			text-align: right;
+		}
+    -->
+</style>
 <h2>Login</h2>
-<form id="login_form" action="?page=index" method="POST">
-	<fieldset>
-		<label>Login</label>
-		<input name="login" id="login" class="required" type="text" maxlength="255" value=""/>
-		<br>
-		<label>Password</label>
-		<input name="password" id="password" class="required" type="password" maxlength="255" value=""/>
-		<br>
-		<input type="submit" value="Log in">
-	</fieldset>
+<form id="login_form" action="?page=login" method="POST">
+	<label>Login</label>
+	<input name="form_login" id="form_login" class="required" type="text" maxlength="255" value=""/>
+	<br/><br/>
+	<label>Password</label>
+	<input name="form_password" id="form_password" class="required" type="password" maxlength="255" value=""/>
+	<br/><br/>
+	<input type="submit" value="Log in">
 </form>
