@@ -1,0 +1,44 @@
+<script type="text/javascript" language="javascript" charset="utf-8">
+// <![CDATA[
+    highlight_menu('admin');
+// ]]>
+</script>
+<style> 
+    <!--
+		label {
+			float: left;
+			width: 125px;
+			display: block;
+			text-align: right;
+		}
+		
+		.list_projects_div {
+			margin-left: 50px;
+		}
+		
+		.list_projects_checkbox {
+			margin-right: 10px;
+		}
+    -->
+</style>
+<h2>Add a new user</h2>
+<form id="add_user_form" action="?page=admin" method="POST">
+	<label>User login</label>
+	<input id="form_login" name="form_login" class="required" type="text" maxlength="255" value=""/>
+	<br/><br/>
+	<label>User password</label>
+	<input id="form_password" name="form_password" class="required" type="password" maxlength="255" value=""/>
+	<br/><br/>
+	<label>User role</label>
+	<select id="form_user_role" name="form_user_role" class="required">
+		<option value="explorer" selected="selected">Explorer</option>
+		<option value="launcher">Launcher</option>
+		<option value="admin">Admin</option>
+	</select>
+	<br/><br/>
+	<label>User collection</label>
+	<br/>
+	<div id="admin_list_projects" class="list_projects_div"></div>
+	<br/>
+	<input type="submit" value="Add user"/>
+</form>
