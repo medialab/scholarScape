@@ -132,7 +132,7 @@ def calculate_dup_scores(col,dup_col,human_check_treshold) :
         logging.info("Done : %i", time.clock() - t1)
 
 
-def merge_duplicates(collection,pub_col,publication_ids,duplicate_flag="human_say") :
+def merge_duplicates(col, dup_col, publication_ids,duplicate_flag="human_say") :
     """ 
         merge a list of publications ids in one parent publication
         already merged publication can be present in publication_ids
@@ -141,40 +141,27 @@ def merge_duplicates(collection,pub_col,publication_ids,duplicate_flag="human_sa
     t1 = time.clock()
     
     # replace parent publications by their children
-    childrens = dict()
+    children = dict()
     for publication_id in publication_ids :
         children_pattern = {"parent_id" : publication_id}
         if campaign != "*":
-            children_pattern['campaign'] = campaign
-        childrens[publication_id] = [children["id"] for children in collection.find(children_pattern)] 
+             children_pattern['campaign'] = campaign
+        # Be carefule : if children[pub_id] = [] then pub_id is a child…
+        children[publication_id] = list(col.find(children_pattern,["_id"]))
+        
+    logging.info("nb parents found : %s"%(len([k for (k,v) in children.iteritems() if v])))
     
     # UPDATE the combinations of duplicates
     for pub1,pub2 in combinations(publication_ids,2):
         # retrieve children
-        _pub1= childrens[pub1] if childrens[pub1] else [pub1]
-        _pub2= childrens[pub2] if childrens[pub2] else [pub2]
-        # generate duplicates pairs from childre, pairs are generated in both ways (a,b) and (b,a)
-        # change human_say
-        logging.info({"$or" : [{"_id1":pair[0],"_id2":pair[1]} for pair in chain(product(_pub1,_pub2),product(_pub2,_pub1)) ] })
-        pub_col.update({"$or" : [{"_id1":pair[0],"_id2":pair[1]} for pair in chain(product(_pub1,_pub2),product(_pub2,_pub1)) ] }, {"$set" : {duplicate_flag : True} }, multi=True )    
+        _pub1= children[pub1] if children[pub1] else [pub1]
+        _pub2= children[pub2] if children[pub2] else [pub2]
+        # generate duplicates pairs from children, pairs are generated in both ways (a,b) and (b,a)
+        # change the flag sepcified in duplicate_flag to true i.e. human_say or automatic_treshold_1 to track merging in dup_col
+        dup_col.update({"$or" : [{"_id1":pair[0],"_id2":pair[1]} for pair in chain(product(_pub1,_pub2),product(_pub2,_pub1)) ] }, {"$set" : {duplicate_flag : True} }, multi=True )    
         
     
-    # pairs = dup_col.find({"$or" : [
-#                             {"title_score" : {"$gt" : title_thresold}, "human_say" : {"$ne" : False} }, 
-#                             {"human_say" : True} 
-#                            ] 
-#                           })
-   #  total = len(_pub1)*len(_pub2)
-#     advance = 0
-#     for i,pair in enumerate(pairs) :
-#         percentage = float(i)/float(total)*100
-#         
-#  
-#     
-#     logging.info("Created the graph at %i, writing it on the disk" % (time.clock() - t1) )
-#     #nx.write_gexf(g,"duplicates" + project + " - " + campaign + ".gexf")
-#     logging.info("Done : %i", time.clock() - t1)
-
+    #information to get to create the father
     what_to_get = {
         "title"      : 1,
         "authors"    : 1,
@@ -187,10 +174,15 @@ def merge_duplicates(collection,pub_col,publication_ids,duplicate_flag="human_sa
         "_id"        : 0
     } 
 
-    # get all children
-    all_childrens=childrens.values()+[k for (k,v) in childrens.iteritems() if v==None]
-    old_parents=[k for (k,v) in childrens.iteritems() if v]
+    # get all children : children of publications + publications without children
+    publications_and_children=[v for v in children.values() if v] + [k for (k,v) in children.iteritems() if not v]
+    logging.info("%s"%(publications_and_children))
+    # old parents = pulications with children 
+    old_parents=[k for (k,v) in children.iteritems() if v]
     
+    # remove old parents
+    if old_parents :
+        col.remove({"$and" : [ {"$or":[{"_id":id} for id in old_parents]} , {"type" : "super_publication"}]})
         
     children_ids = []
     title = ""
@@ -201,13 +193,16 @@ def merge_duplicates(collection,pub_col,publication_ids,duplicate_flag="human_sa
     times_cited = 0
     nr_children = 0
     
+    
+    
     # merge all children in one parent
-    for pub_id in all_childrens :
+    for pub_id in publications_and_children :
         children_ids.append({"_id" : pub_id })
         nr_children += 1
         pub = col.find_one( {"_id" : pub_id }, what_to_get)
         if not pub:
-            print "unknown Publication found in _dup_ collection : "+str(pub_id)
+            # should not happen !
+            logging.info("unknown Publication found in _dup_ collection : "+str(pub_id))
         else :
             if pub.get("title") and len(pub["title"]) > len(title):
                 title =  pub["title"]
@@ -225,7 +220,7 @@ def merge_duplicates(collection,pub_col,publication_ids,duplicate_flag="human_sa
             if pub.get("times_cited") :
                 times_cited += pub["times_cited"]
     # create a new common parent          
-    newparent_id = collection.insert( {  
+    newparent_id = col.insert( {  
                     "title" : title,
                     "authors" : list(authors),
                     "book_title" : book_title,
@@ -236,11 +231,9 @@ def merge_duplicates(collection,pub_col,publication_ids,duplicate_flag="human_sa
                     "nr_children" : nr_children,
                     "campaign" : campaign
                 } )
-    # kill old parents
-    if old_parents :
-        collection.remove({"$or":[{"_id":id} for id in old_parents]})
+    logging.info("created the parent with id : %s for %i children" % (newparent_id,nr_children) )    
     # add reference to the new parent in children
-    collection.update({"$or" : children_ids}, {"$set" : {"parent_id" : newparent_id} }, multi=True )    
+    col.update({"$or" : children_ids}, {"$set" : {"parent_id" : newparent_id} }, multi=True )    
     logging.info("Finished merging duplicates in %i" % (t1 - time.clock()) )     
             
 
@@ -249,6 +242,7 @@ def remove_duplicates(db, project, campaign) :
     col = db[project]
     dup_col = db["__dup__" + project + "-" + campaign]
     dup_col.drop()
+    col.remove({"type" : "super_publication"})
     dup_col = db["__dup__" + project + "-" + campaign]
     myprint("REMOVE_DUPLICATES : I've been summoned to eradicate all duplicates")
     t1 = time.clock()
@@ -258,8 +252,22 @@ def remove_duplicates(db, project, campaign) :
     logging.info("I finished calculating dup scores, it took %i seconds" % ( t1 - time.clock()) )
     logging.info("Now I'm going to merge duplicates of score 1")
     t1 = time.clock()
-    pairs = dup_col.find({"title_score" : {"$gt" : 1} })
-    merge_duplicates(col, dup_col,[id for id1_2 in [[pair["_id1"],pair["_id2"]] for pair in pairs] for id in id1_2],"automatic_treshold_1")
+    
+    # get clusters of duplicates by filtering on title score
+    list_dup_ids_by_cluster=dup_col.group(
+    ["cluster"],
+    {"title_score" : {"$gte" : 1} },
+    {'list': []},
+    'function(dup, cluster) {cluster.list.push(dup["_id1"]);cluster.list.push(dup["_id2"]);}'
+    )
+    logging.info("number of clusters with title_score=1 : %i"%(len(list_dup_ids_by_cluster)))
+    
+    # merge dups by clusters
+    for cluster in list_dup_ids_by_cluster :
+        duplicates_to_merge = list(set(cluster["list"]))
+        logging.info("%s"%(duplicates_to_merge))
+        logging.info(" merging a cluster with %s duplicates" % len(duplicates_to_merge))
+        merge_duplicates(col, dup_col, duplicates_to_merge,"automatic_treshold_1")
     
     nr_parents = col.find({"nr_children" : {"$exists" : True}}).count()
     nr_children = col.find({"parent_id" : {"$exists" : True}}).count()
