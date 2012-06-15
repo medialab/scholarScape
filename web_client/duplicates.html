@@ -19,31 +19,32 @@ $.extend({
 
 var dup_project = $.getUrlVar('project');
 var dup_campaign = $.getUrlVar('campaign');
-
-// <![CDATA[
-// var NB_ITEMS_LIMIT = 20;
-var NB_ITEMS_LIMIT = 1;
+var NB_ITEMS_LIMIT = 20;
 
 $( function (e) {
     $('span#dup_project').text(dup_project);
     $('span#dup_campaign').text(dup_campaign);
     $('.human_check').live('click', function (e) {
         id = $(this).attr('id');
-		human_check = ($(this).attr('value') == 'True') ? true : false;
-        call('duplicate_human_check', new Array(dup_project, dup_campaign, id, human_check) , function(data) {
-            console.log(JSON.parse(data));
-        });
-        $(this).parent().parent().hide(500);
-        $(this).parent().parent().remove();
-        nb_items--;
-        if (nb_items  == 2)
-            give_me_duplicates();
-        $('#number_duplicates_already_checked').text(parseInt($('#number_duplicates_already_checked').text()) + 1);
+		ids = $('#infos_project input:checked');
+		// TODO
+		// if value is True, call to the function duplicate_human_check to mark the selected node as duplicated
+		// if value is False, if all or none nodes are selected and if the next cluster exists, display the next cluster
+		// TO DELETE ???
+		// human_check = ($(this).attr('value') == 'True') ? true : false;
+        // call('duplicate_human_check', new Array(dup_project, dup_campaign, id, human_check) , function(data) {
+            // console.log(JSON.parse(data));
+        // });
+        // $(this).parent().parent().hide(500);
+        // $(this).parent().parent().remove();
+        // nb_items--;
+        // if (nb_items  == 2)
+            // give_me_duplicates();
+        // $('#number_duplicates_already_checked').text(parseInt($('#number_duplicates_already_checked').text()) + 1);
     });
 	
 	var check_data = function (object, property) {
-		object = JSON.parse(object);
-		return typeof(object[property]) != 'undefined' ? object[property] : (property == 'title') ? 'No Title' : '';
+		return typeof(object[property]) != 'undefined' ? object[property] : '';
 	};
 	
 	var append_field = function (data, field, field_name, link) {
@@ -68,35 +69,23 @@ $( function (e) {
     var give_me_duplicates = function () {
         $('#infos_project').append("<tr id='ajaxloader'><td><img src='images/ajax-loader.gif'></td></tr>");
         // JSON RPC call to get info about the campaign unbundling in the project test_data
-		call('give_me_duplicates', new Array(dup_project, dup_campaign, NB_ITEMS_LIMIT), function(data) {
+		call('give_me_duplicates', new Array(dup_project, dup_campaign, NB_ITEMS_LIMIT, 1), function(data) {
 			data = JSON.parse(data)[0];
             nb_items = NB_ITEMS_LIMIT;
             $("#number_duplicates_already_checked").text(data['number_duplicates_already_checked']);
             $("#total_number_of_possible_duplicates").text(data['total_number_of_possible_duplicates']);
-            // for (var i=0; i< window.data[2].length; i++ ) {
-              // var duplicate = window.data[2][i]
-              // if(duplicate[0][1] == "")
-                // duplicate[0][1]="javascript: ghost_print(\"no url returned by google Scholar for that publication\")"
-              // if(duplicate[1][1] == "")
-                // duplicate[1][1] = "javascript: ghost_print(\"no url returned by google Scholar for that publication\")";
-                  // html = "";
-                  // html += "<tr style='border:1px solid black'>";
-                  // html += "<td><a href='"+duplicate[0][1]+"'>"+duplicate[0][0]+"</a></td><td><a href='"+duplicate[1][1]+"'>"+duplicate[1][0]+"</a></td><td>"+duplicate[2]+"</td><td>";
-                  // html += "<button number='"+i+"' class='human_check' value='True' id='"+duplicate[3]+"'>ok</button>";
-                  // html += "<button number='"+i+"' class='human_check' value='False' id='"+duplicate[3]+"'>no</button></td>";
-                  // html += "</tr>";
-                  // $("#infos_project").append(html);
-            // }
 			$('#duplicates_score').text('score : ' + data['duplicates']['score']);
-			html = "";
-			html += append_field(data, 'title', 'Title', true);
-			html += append_field(data, 'book_title', 'Book Title', false);
-			html += append_field(data, 'abstract', 'Abstract', false);
-			html += append_field(data, 'source', 'Source', false);
-			html += append_field(data, 'date', 'Date', false);
-			// Get the array
-			// html += append_field(data, 'authors', 'Authors', false);
-            $('#infos_project').append(html);
+			html = '';
+			for (var i=0; i < data['duplicates'].length; i++) {
+				duplicate = JSON.parse(data['duplicates'][i]);
+				html += '<tr>';
+				html += '<td>' + check_data(duplicate, 'title') + '</td>';
+				html += '<td>' + check_data(duplicate, 'authors') + '</td>';
+				html += '<td>' + check_data(duplicate, 'date') + '</td>';
+				html += '<td><input type="checkbox" name="publications" value="' + check_data(check_data(duplicate, '_id'), '$oid') + '"> </td>';
+				html += '</tr>';
+			}
+			$("#infos_project").append(html);
 			buttons = "";
 			buttons += "<button class='human_check' value='True' id='" + data['duplicates']['id'] + "'>Duplicated publications</button>";
             buttons += "<button class='human_check' value='False' id='" + data['duplicates']['id'] + "'>Nothing to do together!</button>";
@@ -119,7 +108,6 @@ $( function (e) {
 </p>
 <p id="duplicates_score"><p>
 <table id="infos_project" style="font-size:0.8em" width="100%">
-	<!-- thead><th>Title 1</th><th>Title 2</th><th>Similarity</th></thead -->
-	<thead><th colspan="2">Publication 1</th><th colspan="2">Publication 2</th></thead>
+	<thead><th>Title</th><th>Author</th><th>Date</th></thead>
 </table>
 <p id="para"></p>

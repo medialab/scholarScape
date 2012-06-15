@@ -1,7 +1,12 @@
 {
-	"USER_LOGIN" : {
-		"password" : "USER_PASSWORD",
-		"role" : "USER_ROLE",
-		"collections" : ["USER_COLLECTION_1", "USER_COLLECTION_2"]
-	}
+    "medialab": {
+        "collections": [], 
+        "password": "diabal", 
+        "role": "admin"
+    }, 
+    "student": {
+        "collections": [], 
+        "password": "secretepassword", 
+        "role": "explorer"
+    }
 }

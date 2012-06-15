@@ -3,7 +3,9 @@
 ###################
 # _ Change users managment to database
 # _ Repair the tor proxy
-# _ Improve the duplicates process
+# _ Add feedback to the 'add user' process
+# Lors du clic sur Nothing to do together, verifier que tout est selectionne ou que rien n'est selectionne
+# appel de la fonction : duplicates.merge_duplicates(col, dup_col, publications_ids...)
 
 import os
 import json
@@ -24,6 +26,7 @@ from twisted.web import resource, server, static
 from twisted.web.server import NOT_DONE_YET
 from twisted.application import service, internet
 from twisted.cred import checkers, credentials, portal
+import scholar.scholar.duplicates as duplicates
 
 class IUser(Interface):
     '''A user account.
@@ -79,45 +82,45 @@ except errors.AutoReconnect:
     exit()
 
 # Render the pipeline template 
-# print "Rendering pipelines.py with values from config.json..."
-# try :
-    # with nested(open("scholar/scholar/pipelines-template.py", "r"), open("scholar/scholar/pipelines.py", "w")) as (template, generated):
-        # generated.write(pystache.render(template.read(), config['mongo']))
-# except IOError as e:
-    # print "Could not open either pipeline-template file or pipeline file"
-    # print "scholar/scholar/pipelines-template.py", "scholar/scholar/pipelines.py"
-    # print e
-    # exit() 
+print "Rendering pipelines.py with values from config.json..."
+try :
+    with nested(open("scholar/scholar/pipelines-template.py", "r"), open("scholar/scholar/pipelines.py", "w")) as (template, generated):
+        generated.write(pystache.render(template.read(), config['mongo']))
+except IOError as e:
+    print "Could not open either pipeline-template file or pipeline file"
+    print "scholar/scholar/pipelines-template.py", "scholar/scholar/pipelines.py"
+    print e
+    exit() 
 
 # Render the scrapy cfg  
-# print "Rendering scrapy.cfg with values from config.json..."
-# try :
-    # with nested(open("scholar/scrapy-template.cfg", "r"), open("scholar/scrapy.cfg", "w")) as (template, generated):
-        # generated.write(pystache.render(template.read(), config['scrapyd']))
-# except IOError as e:
-    # print "Could not open either scrapy.cfg template file or scrapy.cfg"
-    # print "scholar/scrapy-template.cfg", "scholar/scrapy.cfg"
-    # print e
-    # exit() 
+print "Rendering scrapy.cfg with values from config.json..."
+try :
+    with nested(open("scholar/scrapy-template.cfg", "r"), open("scholar/scrapy.cfg", "w")) as (template, generated):
+        generated.write(pystache.render(template.read(), config['scrapyd']))
+except IOError as e:
+    print "Could not open either scrapy.cfg template file or scrapy.cfg"
+    print "scholar/scrapy-template.cfg", "scholar/scrapy.cfg"
+    print e
+    exit() 
 
 # Deploy the egg     
-# print "Sending scholarScrape's scrapy egg to scrapyd server..."
-# os.chdir("scholar")
-# p = subprocess.Popen(['scrapy', 'deploy'], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-# output, errors = p.communicate()
-# print output, errors
-# try :
-    # output = json.loads(output)
-    # if output['status'] != "ok" :
-        # print "There was a problem sending the scrapy egg."
-        # print output, errors    
-        # exit()
-# except ValueError:
-    # print "There was a problem sending the scrapy egg."
-    # print output, errors     
-    # exit()
-# print "The egg was successfully sent to scrapyd server", config['scrapyd']['host'], "on port", config['scrapyd']['port']
-# os.chdir("..")
+print "Sending scholarScrape's scrapy egg to scrapyd server..."
+os.chdir("scholar")
+p = subprocess.Popen(['scrapy', 'deploy'], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+output, errors = p.communicate()
+print output, errors
+try :
+    output = json.loads(output)
+    if output['status'] != "ok" :
+        print "There was a problem sending the scrapy egg."
+        print output, errors    
+        exit()
+except ValueError:
+    print "There was a problem sending the scrapy egg."
+    print output, errors     
+    exit()
+print "The egg was successfully sent to scrapyd server", config['scrapyd']['host'], "on port", config['scrapyd']['port']
+os.chdir("..")
 
 print "Starting the server"
 root_dir = os.path.dirname(__file__)    
@@ -299,41 +302,34 @@ class scholarScape(jsonrpc.JSONRPC):
             collection_names = users[u]['collections']
         return collection_names
     
-    def jsonrpc_give_me_duplicates(self, project, campaign, limit) :
+    def jsonrpc_give_me_duplicates(self, project, campaign, limit, cluster_id) :
         """
         Return lists of duplicates
         """
         TITLE_THRESOLD = 0.8
         dup_col = db["__dup__" + project + "-" + campaign]
         col = db[project]
-        total_number_of_possible_duplicates = dup_col.find({  "title_score" : {"$gt" : TITLE_THRESOLD, "$lt" : 1} }).count()
-        number_duplicates_already_checked = dup_col.find({  "title_score" : {"$gt" : TITLE_THRESOLD, "$lt" : 1}, "human_say" : {"$exists" : True}	}).count()
-        possible_duplicates = dup_col.find({  "title_score" : {"$gt" : TITLE_THRESOLD, "$lt" : 1}, "human_say" : {"$exists" : False}	}).limit(limit)
-        print "found " + str(possible_duplicates.count()) + " possible duplicates"
-        for pb in possible_duplicates :
-            pub1 = col.find_one( {"_id" : pb["_id1"] }, {"title":1, "href":1})
-            pub2 = col.find_one( {"_id" : pb["_id2"] }, {"title":1, "href":1})
-            if pub1 and pub2 :
-                try :
-                    duplicates = {
-                        "pub1" : json.dumps(pub1, default = json_util.default),
-                        "pub2" : json.dumps(pub2, default = json_util.default),
-                        "score" : round(pb['title_score'], 2),
-                        "id" : str(pb['_id'])
-                    }
-                except Exception as e : 
-                    print "%s %s"%(pb["_id1"], pb["_id2"])
-                    print e
-            else : 
-                if pub2 == None :
-                    badpub = (pub2,pb["_id2"])
-                if pub1 == None : 
-                    badpub = (pub1,pb["_id1"])
-                print "one duplicate not found %s %s" % badpub
+        total_number_of_possible_duplicates = dup_col.find({'title_score' : {'$gt' : TITLE_THRESOLD, '$lt' : 1}, 'cluster' : {'$exists' : True}}).count()
+        number_duplicates_already_checked = dup_col.find({'title_score' : {'$gt' : TITLE_THRESOLD, '$lt' : 1}, 'human_say' : {'$exists' : True}}).count()
+        # Get the first cluster
+        possible_duplicates = dup_col.find({'title_score' : {'$gte' : TITLE_THRESOLD, '$lt' : 1}, 'cluster' : cluster_id, 'human_say' : {'$exists' : False}})
+        # Select the ids of the duplicated publications
+        duplicate_ids = []
+        for possible_duplicate in possible_duplicates :
+            duplicate_ids.append(possible_duplicate['_id1'])
+            duplicate_ids.append(possible_duplicate['_id2'])
+        duplicate_ids = list(set(duplicate_ids))
+        # Get the duplicated publications
+        duplicates = []
+        for duplicate_id in duplicate_ids :
+            publication = col.find_one({'_id' : duplicate_id})
+            # TODO
+            # If the publication has a parent, replace the publication by its parent
+            duplicates.append(json.dumps(publication, default = json_util.default))
         return {
-            "total_number_of_possible_duplicates" : total_number_of_possible_duplicates,
-            "number_duplicates_already_checked" : number_duplicates_already_checked,
-            "duplicates" : duplicates
+            'total_number_of_possible_duplicates' : total_number_of_possible_duplicates,
+            'number_duplicates_already_checked' : number_duplicates_already_checked,
+            'duplicates' : duplicates
             }
     
     def jsonrpc_duplicate_human_check(self, project, campaign, dup_id, is_duplicate):

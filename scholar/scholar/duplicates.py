@@ -146,7 +146,7 @@ def merge_duplicates(col, dup_col, publication_ids,duplicate_flag="human_say") :
         children_pattern = {"parent_id" : publication_id}
         if campaign != "*":
              children_pattern['campaign'] = campaign
-        # Be carefule : if children[pub_id] = [] then pub_id is a child…
+        # Be carefule : if children[pub_id] = [] then pub_id is a child
         children[publication_id] = list(col.find(children_pattern,["_id"]))
         
     logging.info("nb parents found : %s"%(len([k for (k,v) in children.iteritems() if v])))
