@@ -19,7 +19,8 @@ from datetime import date
 from contextlib import nested
 from txjsonrpc.web import jsonrpc
 from urllib import quote_plus as qp
-from pymongo import Connection, errors, json_util, objectid
+from pymongo import Connection, errors
+from bson import json_util, objectid
 from zope.interface import implements, Interface
 from twisted.protocols import basic
 from twisted.web import resource, server, static
