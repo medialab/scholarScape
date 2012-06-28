@@ -25,11 +25,10 @@ $( function (e) {
     $('span#dup_project').text(dup_project);
     $('span#dup_campaign').text(dup_campaign);
     $('.human_check').live('click', function (e) {
-        id = $(this).attr('id');
-		ids = $('#infos_project input:checked');
+
 		// TODO
-		// if value is True, call to the function duplicate_human_check to mark the selected node as duplicated
-		// if value is False, if all or none nodes are selected and if the next cluster exists, display the next cluster
+		// if human_check is True, call to the function duplicate_human_check to mark the selected node as duplicated
+		// if human_check is False, if all or none nodes are selected and if the next cluster exists, display the next cluster
 		// TO DELETE ???
 		// human_check = ($(this).attr('value') == 'True') ? true : false;
         // call('duplicate_human_check', new Array(dup_project, dup_campaign, id, human_check) , function(data) {
@@ -41,6 +40,20 @@ $( function (e) {
         // if (nb_items  == 2)
             // give_me_duplicates();
         // $('#number_duplicates_already_checked').text(parseInt($('#number_duplicates_already_checked').text()) + 1);
+
+        var human_check = $(this).attr("value");
+
+        if(human_check) {
+            var ids = new Array();
+            var checkboxes = $('#infos_project input:checked').each(function() {
+                ids.push($(this).attr("value"));
+            });
+            call('duplicate_human_check', new Array(dup_project, dup_campaign, ids, human_check) , function(data) {
+                console.log(JSON.parse(data));
+                $('#infos_project input:checked').parent().parent().remove();
+            });
+        }
+        debugger;
     });
 	
 	var check_data = function (object, property) {
