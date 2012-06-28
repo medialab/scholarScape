@@ -1,6 +1,7 @@
 import time
 import logging
 from pymongo import Connection
+from bson.objectid import ObjectId
 from itertools import combinations, product, chain
 import Levenshtein
 import math
@@ -132,7 +133,7 @@ def calculate_dup_scores(col,dup_col,human_check_treshold) :
         logging.info("Done : %i", time.clock() - t1)
 
 
-def merge_duplicates(col, dup_col, publication_ids,duplicate_flag="human_say") :
+def merge_duplicates(campaign, col, dup_col, publication_ids,duplicate_flag="human_say") :
     """ 
         merge a list of publications ids in one parent publication
         already merged publication can be present in publication_ids
@@ -145,20 +146,20 @@ def merge_duplicates(col, dup_col, publication_ids,duplicate_flag="human_say") :
     for publication_id in publication_ids :
         children_pattern = {"parent_id" : publication_id}
         if campaign != "*":
-             children_pattern['campaign'] = campaign
+            children_pattern['campaign'] = campaign
         # Be carefule : if children[pub_id] = [] then pub_id is a child
-        children[publication_id] = list(col.find(children_pattern,["_id"]))
+        children[publication_id] = list(col.find(children_pattern,{"_id" : 1}))
         
     logging.info("nb parents found : %s"%(len([k for (k,v) in children.iteritems() if v])))
     
     # UPDATE the combinations of duplicates
     for pub1,pub2 in combinations(publication_ids,2):
         # retrieve children
-        _pub1= children[pub1] if children[pub1] else [pub1]
-        _pub2= children[pub2] if children[pub2] else [pub2]
+        _pub1 = children[pub1] if children[pub1] else [pub1]
+        _pub2 = children[pub2] if children[pub2] else [pub2]
         # generate duplicates pairs from children, pairs are generated in both ways (a,b) and (b,a)
         # change the flag sepcified in duplicate_flag to true i.e. human_say or automatic_treshold_1 to track merging in dup_col
-        dup_col.update({"$or" : [{"_id1":pair[0],"_id2":pair[1]} for pair in chain(product(_pub1,_pub2),product(_pub2,_pub1)) ] }, {"$set" : {duplicate_flag : True} }, multi=True )    
+        dup_col.update({"$or" : [{"_id1":ObjectId(pair[0]),"_id2":ObjectId(pair[1])} for pair in chain(product(_pub1,_pub2),product(_pub2,_pub1)) ] }, {"$set" : {duplicate_flag : True} }, multi=True )    
         
     
     #information to get to create the father
