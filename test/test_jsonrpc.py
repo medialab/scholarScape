@@ -1,14 +1,32 @@
-from scholarScape import scholarScape
-from bson.objectid import ObjectId
-import pymongo
-import uuid
+import os
+import json
+import pprint
+import urllib
+import urllib2
+import hashlib
+import pystache
+import subprocess
+from scholarScape.server.rpc import scholarScape
+from datetime import date
+from contextlib import nested
+from urllib import quote_plus as qp
+from pymongo import Connection, errors
+from bson import json_util, objectid
+from zope.interface import implements, Interface
+from twisted.protocols import basic
+from twisted.web import resource, server, static
+from twisted.web.server import NOT_DONE_YET
+from twisted.application import service, internet
+from twisted.cred import checkers, credentials, portal
+from itertools import permutations
+import scholar.scholar.duplicates as duplicates
 
 class TestJsonRPC:
     def setup_method(self, method):
         self.connection = pymongo.Connection()
         self.database_name = str(uuid.uuid4())
         self.database = self.connection[self.database_name]
-        self.jsonrpc = scholarScape.scholarScape(self.database)
+        self.jsonrpc = scholarScape(self.database)
 
     def teardown_method(self, method):
         self.connection.drop_database(self.database)
