@@ -4,25 +4,14 @@ import threads
 import networkx as nx
 import os
 import json
-import pprint
 import urllib
 import urllib2
 import hashlib
-import pystache
 import subprocess
 from datetime import datetime
 from datetime import date
-from contextlib import nested
-from urllib import quote_plus as qp
-from pymongo import Connection, errors
-from bson import json_util, objectid
-from zope.interface import implements, Interface
-from twisted.protocols import basic
-from twisted.web import resource, server, static
-from twisted.web.server import NOT_DONE_YET
-from twisted.application import service, internet
-from twisted.cred import checkers, credentials, portal
-from itertools import permutations
+from bson import json_util
+from twisted.web import server
 from txjsonrpc.web import jsonrpc
 from scholarScape.scholarScape import users, config, scholarize, data_dir
 from random import getrandbits
