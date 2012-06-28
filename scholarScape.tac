@@ -26,6 +26,7 @@ from twisted.web import resource, server, static
 from twisted.web.server import NOT_DONE_YET
 from twisted.application import service, internet
 from twisted.cred import checkers, credentials, portal
+from itertools import permutations
 import scholar.scholar.duplicates as duplicates
 
 class IUser(Interface):
@@ -332,16 +333,19 @@ class scholarScape(jsonrpc.JSONRPC):
             'duplicates' : duplicates
             }
     
-    def jsonrpc_duplicate_human_check(self, project, campaign, dup_id, is_duplicate):
-        collection_name = "__dup__"+project+"-"+campaign
-        print collection_name
-        dup_id =  objectid.ObjectId(dup_id)
-        db[collection_name].update({"_id" : dup_id}, {"$set" : {"human_say" : is_duplicate}})
-        print dup_id
-        print db["__dup__"+project+"-"+campaign].find_one({"_id" : dup_id})['human_say']
+    def jsonrpc_duplicate_human_check(self, project, campaign, dup_ids, is_duplicate):
+        col = db[project]
+        dup_col = db["__dup__"+project+"-"+campaign]
+        #dup_id =  objectid.ObjectId(dup_id)
+        #db[collection_name].update({"_id" : dup_id}, {"$set" : {"human_say" : is_duplicate}})
+        #print dup_id
+        #print db["__dup__"+project+"-"+campaign].find_one({"_id" : dup_id})['human_say']
         if is_duplicate :
+            duplicates.merge_duplicates(campaign, col, dup_col, dup_ids)
             return "Has been marked as duplicate"
-        return "Has been unmarked as duplicate"
+        else:
+            # TODO
+            return "Has been unmarked as duplicate"
     
     def jsonrpc_list_campaigns(self, project_name) :
         """
