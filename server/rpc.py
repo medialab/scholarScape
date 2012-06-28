@@ -213,7 +213,7 @@ class scholarScape(jsonrpc.JSONRPC):
             return "a process to remove duplicate is already running with PID: %s started %s"%(existing_process_running["pid"],existing_process_running["start_date"])
         else:
 
-            # create a process            
+            # create a process
             p = subprocess.Popen(["python","scholar/scholar/duplicates.py",project_name, campaign])
 
             # trace it in the database
@@ -223,7 +223,7 @@ class scholarScape(jsonrpc.JSONRPC):
 
             col.insert({"project_name": project_name,"campaign":campaign,"status":"running","pid":p.pid,"start_date":datetime.now()})
 
-            # wait for the subprocess to stop 
+            # wait for the subprocess to stop
 
             def wait_for_process(project_name, campaign,p):
             # waiting for end of process method
@@ -243,7 +243,7 @@ class scholarScape(jsonrpc.JSONRPC):
     def jsonrpc_cancel_campaign(self, project_name, campaign):
         collection = self.db[project_name]
         job_id = collection.find_one({ "name" : campaign })["job_id"]
-        url = 'http://%s:%s/cancel.json' % (config['scrapyd']['host'], config['scrapyd']['port']) 
+        url = 'http://%s:%s/cancel.json' % (config['scrapyd']['host'], config['scrapyd']['port'])
         values = [("project" , "scholar"),
                   ('job' , job_id),]
 
@@ -314,7 +314,7 @@ class scholarScape(jsonrpc.JSONRPC):
         for not_child in collection.find(not_children):
             add_pub_in_graph(not_child) #adding them to the graph
 
-        # forge a name 
+        # forge a name
         filename = os.path.join(os.path.dirname(__file__), data_dir, "gexf", project_name + "-" + campaign + "-" + str(getrandbits(128)) + ".gexf" )
 
         # filter nodes whose depth is > max_depth
@@ -411,4 +411,3 @@ class scholarScape(jsonrpc.JSONRPC):
             return {'code' : 'ok', 'message' : 'Campaign ' + campaign_name + ' was deleted successfully'}
         except Exception as e:
             return {'code' : 'fail', 'message' : str(e)}
-
