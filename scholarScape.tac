@@ -267,15 +267,19 @@ class scholarScape(jsonrpc.JSONRPC):
 
     addSlash = True
     projects = []
-    
+
+    def __init__(self, db):
+        jsonrpc.JSONRPC.__init__(self)
+        self.db = db
+
     def jsonrpc_start_project(self, project_name):
         """
         JSON-RPC method to start a project
         """
         
         # checking if projects already exists
-        if project_name not in db.collection_names() :
-            db.create_collection(project_name)
+        if project_name not in self.db.collection_names() :
+            self.db.create_collection(project_name)
             return dict(code = "ok", message = project_name + " successfully created.") 
         else :
             return dict(code = "fail", message = "Sorry, error" )
@@ -295,7 +299,7 @@ class scholarScape(jsonrpc.JSONRPC):
         if u is None :
             collection_names = []
         elif r == 'admin' :
-            collection_names = db.collection_names()
+            collection_names = self.db.collection_names()
             collection_names.remove('system.indexes')
             collection_names.remove('system.users')
             collection_names = [collection_name for collection_name in collection_names if not collection_name.startswith("__")]
@@ -308,8 +312,8 @@ class scholarScape(jsonrpc.JSONRPC):
         Return lists of duplicates
         """
         TITLE_THRESOLD = 0.8
-        dup_col = db["__dup__" + project + "-" + campaign]
-        col = db[project]
+        dup_col = self.db["__dup__" + project + "-" + campaign]
+        col = self.db[project]
         total_number_of_possible_duplicates = dup_col.find({'title_score' : {'$gt' : TITLE_THRESOLD, '$lt' : 1}, 'cluster' : {'$exists' : True}}).count()
         number_duplicates_already_checked = dup_col.find({'title_score' : {'$gt' : TITLE_THRESOLD, '$lt' : 1}, 'human_say' : {'$exists' : True}}).count()
         # Get the first cluster
@@ -334,25 +338,21 @@ class scholarScape(jsonrpc.JSONRPC):
             }
     
     def jsonrpc_duplicate_human_check(self, project, campaign, dup_ids, is_duplicate):
-        col = db[project]
-        dup_col = db["__dup__"+project+"-"+campaign]
-        #dup_id =  objectid.ObjectId(dup_id)
-        #db[collection_name].update({"_id" : dup_id}, {"$set" : {"human_say" : is_duplicate}})
-        #print dup_id
-        #print db["__dup__"+project+"-"+campaign].find_one({"_id" : dup_id})['human_say']
-        if is_duplicate :
+        col = self.db[project]
+        dup_col = self.db["__dup__"+project+"-"+campaign]
+        if is_duplicate:
             duplicates.merge_duplicates(campaign, col, dup_col, dup_ids)
             return "Has been marked as duplicate"
         else:
             # TODO
-            return "Has been unmarked as duplicate"
-    
+            return "Has been marked as not duplicate"
+
     def jsonrpc_list_campaigns(self, project_name) :
         """
         JSON-RPC method to get the lists of all the campaigns in a particular
         project.
         """
-        collection = db[project_name]
+        collection = self.db[project_name]
         campaigns = [campaign for campaign in collection.find({'download_delay' : {'$exists' : True}}, {'_id' : 0}) ]
         return [project_name, campaigns]
     
@@ -364,7 +364,7 @@ class scholarScape(jsonrpc.JSONRPC):
         collection_names = self.jsonrpc_list_project(login)
         projects = []
         for collection_name in collection_names:
-            collection = db[collection_name]
+            collection = self.db[collection_name]
             campaigns = [campaign for campaign in collection.find({'download_delay' : {'$exists' : True}}, {'_id' : 0}) ]
             projects.append([collection_name, sorted(campaigns, key = lambda x : x['name'])])
         return sorted(projects, key = lambda x : x[0])
@@ -373,7 +373,7 @@ class scholarScape(jsonrpc.JSONRPC):
         """
         JSON-RPC method to start a campaign.
         """
-        collection = db[project]
+        collection = self.db[project]
         if collection.find({ "name" : campaign }).count() > 0 :
             return dict(code = "fail", message = "Already existing campaign : campaign could not be created")     
         
@@ -439,7 +439,7 @@ class scholarScape(jsonrpc.JSONRPC):
     
     #added by Paul
     def jsonrpc_remove_duplicates(self, project_name, campaign):
-        col=db["__process__remove_duplicates"]
+        col=self.db["__process__remove_duplicates"]
         existing_process_running=col.find_one({"project_name": project_name,"campaign":campaign},{"status":1,"pid":1,"start_date":1})
         if existing_process_running and existing_process_running["status"] == "running":
             return "a process to remove duplicate is already running with PID: %s started %s"%(existing_process_running["pid"],existing_process_running["start_date"])
@@ -461,7 +461,7 @@ class scholarScape(jsonrpc.JSONRPC):
             # waiting for end of process method
                 print "waiting for the process %s to stop"%p.pid
                 p.wait()
-                col=db["__process__remove_duplicates"]
+                col=self.db["__process__remove_duplicates"]
                 col.update({"project_name": project_name,"campaign":campaign},{"$set":{"status":"finished","end_date":datetime.now()}})
                 print "process %s stopped"%p.pid
 
@@ -473,7 +473,7 @@ class scholarScape(jsonrpc.JSONRPC):
     
     
     def jsonrpc_cancel_campaign(self, project_name, campaign):
-        collection = db[project_name]
+        collection = self.db[project_name]
         job_id = collection.find_one({ "name" : campaign })["job_id"]
         url = 'http://%s:%s/cancel.json' % (config['scrapyd']['host'], config['scrapyd']['port']) 
         values = [("project" , "scholar"),
@@ -497,7 +497,7 @@ class scholarScape(jsonrpc.JSONRPC):
     def jsonrpc_export_gexf(self, project_name, campaign,max_depth=None):
         """JSON-RPC method to export a graph from a particular project/campaign."""
         g = nx.Graph()
-        collection = db[project_name]
+        collection = self.db[project_name]
         
         # The hash table will act as a translation table child -> parent to
         # enable that a publication which links to a child will be connected
@@ -559,7 +559,7 @@ class scholarScape(jsonrpc.JSONRPC):
         
     def jsonrpc_export_duplicates(self, project, campaign) :
         g = nx.Graph()
-        collection = db[project]
+        collection = self.db[project]
         for parent in collection.find({"nr_children" : {"$exists" : True}, "campaign": campaign} ) :
             g.add_node(str(parent['_id']), title=parent['title'])
 
@@ -603,7 +603,7 @@ class scholarScape(jsonrpc.JSONRPC):
 
     def jsonrpc_monitor(self, project_name, campaign_name) :
         #nombre d'items
-        collection = db[project_name]
+        collection = self.db[project_name]
         nb_super   = collection.find({"campaign" : campaign_name, "nr_children" : {"$exists" : True}}).count()
         nb_items   = collection.find({"campaign" : campaign_name}).count()  - nb_super
         last_items = list(collection.find({"campaign" : campaign_name }, {"_id" : False, "parent_id" : False}).limit(10).sort([("$natural", -1)])) # most recent items
@@ -619,7 +619,7 @@ class scholarScape(jsonrpc.JSONRPC):
 
     def jsonrpc_monitor_project(self, project_name) :
         #nombre d'items
-        collection = db[project_name]
+        collection = self.db[project_name]
         nb_campaigns = collection.find({"download_delay" : {"$exists" : True}}).count()
         nb_items = collection.find({"title" : {"$exists" : True}}).count()
         return {"nb_campaigns" : nb_campaigns,
@@ -627,17 +627,17 @@ class scholarScape(jsonrpc.JSONRPC):
 
     def jsonrpc_remove_project(self,project_name) :
         try : 
-            db.drop_collection(project_name)
-            for name in db.collection_names(): 
+            self.db.drop_collection(project_name)
+            for name in self.db.collection_names(): 
                 if name.startswith("__dup__" + project_name + "-") :
-                    db.drop_collection(name) 
+                    self.db.drop_collection(name) 
             return {"code":"ok", "message" : "Project " + project_name + " was deleted successfully"}
         except Exception as e:
             return {"code" : "fail", "message" : str(e)}            
-        
+
     def jsonrpc_remove_campaign(self, project_name, campaign_name) :
         try :
-            collection = db[project_name]
+            collection = self.db[project_name]
             collection.remove({'campaign' : campaign_name})
             collection.remove({'download_delay' : {'$exists' : True}, 'name' : campaign_name})
             return {'code' : 'ok', 'message' : 'Campaign ' + campaign_name + ' was deleted successfully'}
@@ -654,7 +654,7 @@ class Downloader(resource.Resource):
         except Exception as e:
             return 'There was an error : ' + str(e)
 
-db =  _connect_to_db()
+db = _connect_to_db()
 
 root = Home()
 root.putChild('downloader', Downloader())
@@ -662,7 +662,7 @@ root.putChild('js', static.File(os.path.join(root_dir, web_client_dir, 'js')))
 root.putChild('css', static.File(os.path.join(root_dir, web_client_dir, 'css')))
 root.putChild('fonts', static.File(os.path.join(root_dir, web_client_dir, 'fonts')))
 root.putChild('images', static.File(os.path.join(root_dir, web_client_dir, 'images')))
-manageJson = scholarScape()
+manageJson = scholarScape(db)
 root.putChild('json', manageJson)
 data = static.File('data')
 root.putChild('data', data)
