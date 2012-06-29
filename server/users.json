@@ -1,0 +1,12 @@
+{
+    "medialab": {
+        "collections": [], 
+        "password": "diabal", 
+        "role": "admin"
+    }, 
+    "student": {
+        "collections": [], 
+        "password": "secretepassword", 
+        "role": "explorer"
+    }
+}
