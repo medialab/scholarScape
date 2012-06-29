@@ -1,6 +1,5 @@
 import zipfile
 import shlex
-import threads
 import networkx as nx
 import os
 import json
@@ -12,8 +11,9 @@ from datetime import datetime
 from datetime import date
 from bson import json_util
 from twisted.web import server
+from twisted.internet import threads
 from txjsonrpc.web import jsonrpc
-from scholarScape.scholarScape import users, config, scholarize, data_dir
+from utils import users, config, scholarize, data_dir
 from random import getrandbits
 import scholar.scholar.duplicates as duplicates
 

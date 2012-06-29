@@ -20,6 +20,9 @@ from twisted.application import service, internet
 from twisted.cred import checkers, credentials, portal
 from itertools import permutations
 import scholar.scholar.duplicates as duplicates
+import pymongo
+import uuid
+from bson.objectid import ObjectId
 
 class TestJsonRPC:
     def setup_method(self, method):
