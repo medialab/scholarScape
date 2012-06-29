@@ -80,7 +80,6 @@ class scholarScape(jsonrpc.JSONRPC):
         for possible_duplicate in possible_duplicates :
             duplicate_ids.add(possible_duplicate['_id1'])
             duplicate_ids.add(possible_duplicate['_id2'])
-        duplicate_ids = list(duplicate_ids)
         # Get the duplicated publications
         duplicates = []
         for duplicate_id in duplicate_ids :
