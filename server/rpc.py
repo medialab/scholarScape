@@ -90,7 +90,7 @@ class scholarScape(jsonrpc.JSONRPC):
         return {
             'total_number_of_possible_duplicates' : total_number_of_possible_duplicates,
             'number_duplicates_already_checked' : number_duplicates_already_checked,
-            'duplicates' : duplicates
+            'duplicates' : duplicates[:limit]
             }
 
     def jsonrpc_duplicate_human_check(self, project, campaign, dup_ids, is_duplicate):
