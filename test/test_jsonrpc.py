@@ -68,3 +68,18 @@ class TestJsonRPC:
         for dup in duplicates["duplicates"]:
             dup = json.loads(dup)
             assert dup["title"] in ["test4", "test5"]
+
+    def test_marked_duplicates_dont_reappear(self):
+        _id1 = ObjectId()
+        _id2 = ObjectId()
+        self.project_col.insert({"_id" : _id1, "title" : "test1"})
+        self.project_col.insert({"_id" : _id2, "title" : "test2"})
+        self.campaign_col.insert({"_id1" : _id1, "_id2" : _id2, "cluster" : 1, "title_score" : 0.9})
+
+        duplicates = self.jsonrpc.jsonrpc_give_me_duplicates(self.project, self.campaign, 3, 1)
+        assert len(duplicates["duplicates"]) == 2
+
+        self.jsonrpc.jsonrpc_duplicate_human_check(self.project, self.campaign, [str(_id1), str(_id2)], True)
+
+        duplicates = self.jsonrpc.jsonrpc_give_me_duplicates(self.project, self.campaign, 3, 1)
+        assert len(duplicates["duplicates"]) == 0
