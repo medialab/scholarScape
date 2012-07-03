@@ -64,29 +64,46 @@ class scholarScape(jsonrpc.JSONRPC):
             collection_names = users[u]['collections']
         return collection_names
 
-    def jsonrpc_give_me_duplicates(self, project, campaign, limit, cluster_id) :
+    def jsonrpc_give_me_duplicates(self, project, campaign, limit, cluster_id=None) :
         """
         Return lists of duplicates
         """
         TITLE_THRESOLD = 0.8
-        dup_col = self.db["__dup__" + project + "-" + campaign]
+
         col = self.db[project]
+        dup_col = self.db["__dup__" + project + "-" + campaign]
+
+        if cluster_id == None:
+            clusters = dup_col.distinct("cluster")
+            if len(clusters) == 0:
+                cluster_id = 0
+            else:
+                for cluster in clusters:
+                    possible_duplicates_left = dup_col.find({'title_score' : {'$gt' : TITLE_THRESOLD, '$lt' : 1}, 'cluster' : cluster, 'human_say' : {"$exists" : False}}).count()
+                    if possible_duplicates_left:
+                        cluster_id = cluster
+
+
         total_number_of_possible_duplicates = dup_col.find({'title_score' : {'$gt' : TITLE_THRESOLD, '$lt' : 1}, 'cluster' : {'$exists' : True}}).count()
         number_duplicates_already_checked = dup_col.find({'title_score' : {'$gt' : TITLE_THRESOLD, '$lt' : 1}, 'human_say' : {'$exists' : True}}).count()
-        # Get the first cluster
-        possible_duplicates = dup_col.find({'title_score' : {'$gte' : TITLE_THRESOLD, '$lt' : 1}, 'cluster' : cluster_id, 'human_say' : {'$exists' : False}})
-        # Select the ids of the duplicated publications
-        duplicate_ids = set()
-        for possible_duplicate in possible_duplicates :
-            duplicate_ids.add(possible_duplicate['_id1'])
-            duplicate_ids.add(possible_duplicate['_id2'])
-        # Get the duplicated publications
-        duplicates = []
-        for duplicate_id in duplicate_ids :
-            publication = col.find_one({'_id' : duplicate_id})
-            # TODO
-            # If the publication has a parent, replace the publication by its parent
-            duplicates.append(json.dumps(publication, default = json_util.default))
+        if cluster_id:
+            # Get the first cluster
+            possible_duplicates = dup_col.find({'title_score' : {'$gte' : TITLE_THRESOLD, '$lt' : 1}, 'cluster' : cluster_id, 'human_say' : {'$exists' : False}})
+            # Select the ids of the duplicated publications
+            duplicate_ids = set()
+            for possible_duplicate in possible_duplicates :
+                duplicate_ids.add(possible_duplicate['_id1'])
+                duplicate_ids.add(possible_duplicate['_id2'])
+            # Get the duplicated publications
+            duplicates = []
+            for duplicate_id in duplicate_ids :
+                publication = col.find_one({'_id' : duplicate_id})
+                # TODO
+                # If the publication has a parent, replace the publication by its parent
+                duplicates.append(json.dumps(publication, default = json_util.default))
+        else:
+            duplicates = []
+            cluster_id = -1
         return {
             'total_number_of_possible_duplicates' : total_number_of_possible_duplicates,
             'number_duplicates_already_checked' : number_duplicates_already_checked,

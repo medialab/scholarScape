@@ -86,3 +86,32 @@ class TestJsonRPC:
 
         duplicates = self.jsonrpc.jsonrpc_give_me_duplicates(self.project, self.campaign, 3, 1)
         assert len(duplicates["duplicates"]) == 0
+
+    def test_giveme_duplicates_no_clusterid(self):
+        _id1 = ObjectId()
+        _id2 = ObjectId()
+        _id3 = ObjectId()
+        _id4 = ObjectId()
+        self.project_col.insert({"_id" : _id1, "title" : "test1"})
+        self.project_col.insert({"_id" : _id2, "title" : "test2"})
+        self.project_col.insert({"_id" : _id3, "title" : "test3"})
+        self.project_col.insert({"_id" : _id4, "title" : "test4"})
+        self.campaign_col.insert({"_id1" : _id1, "_id2" : _id2, "cluster" : 1, "title_score" : 0.9})
+        self.campaign_col.insert({"_id1" : _id3, "_id2" : _id4, "cluster" : 2, "title_score" : 0.9})
+
+        duplicates = self.jsonrpc.jsonrpc_give_me_duplicates(self.project, self.campaign, 3)
+        assert duplicates["cluster"] in [1, 2]
+        if duplicates["cluster"] == 1:
+            self.jsonrpc.jsonrpc_duplicate_human_check(self.project, self.campaign, [str(_id1), str(_id2)], True)
+            duplicates = self.jsonrpc.jsonrpc_give_me_duplicates(self.project, self.campaign, 3)
+            assert duplicates["cluster"] == 2
+            self.jsonrpc.jsonrpc_duplicate_human_check(self.project, self.campaign, [str(_id3), str(_id4)], True)
+        else:
+            self.jsonrpc.jsonrpc_duplicate_human_check(self.project, self.campaign, [str(_id3), str(_id4)], True)
+            duplicates = self.jsonrpc.jsonrpc_give_me_duplicates(self.project, self.campaign, 3)
+            self.jsonrpc.jsonrpc_duplicate_human_check(self.project, self.campaign, [str(_id1), str(_id2)], True)
+            assert duplicates["cluster"] == 1
+
+        duplicates = self.jsonrpc.jsonrpc_give_me_duplicates(self.project, self.campaign, 3)
+        assert duplicates["cluster"] == -1
+        assert duplicates["duplicates"] == []
