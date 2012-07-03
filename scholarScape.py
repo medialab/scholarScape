@@ -54,13 +54,13 @@ class User(object):
 
 # Check if the DB is available
 try :
-    Connection("mongodb://" + config['mongo']['user'] + ":" + 
+    Connection("mongodb://" + config['mongo']['user'] + ":" +
             config['mongo']['passwd'] + "@" + config['mongo']['host'] + ":" + str(config['mongo']['port']) + "/" + config['mongo']['database'] )
 except errors.AutoReconnect:
     print "Could not connect to mongodb server", config['mongo']
     exit()
 
-# Render the pipeline template 
+# Render the pipeline template
 print "Rendering pipelines.py with values from config.json..."
 try :
     with nested(open("scholar/scholar/pipelines-template.py", "r"), open("scholar/scholar/pipelines.py", "w")) as (template, generated):
@@ -69,9 +69,9 @@ except IOError as e:
     print "Could not open either pipeline-template file or pipeline file"
     print "scholar/scholar/pipelines-template.py", "scholar/scholar/pipelines.py"
     print e
-    exit() 
+    exit()
 
-# Render the scrapy cfg  
+# Render the scrapy cfg
 print "Rendering scrapy.cfg with values from config.json..."
 try :
     with nested(open("scholar/scrapy-template.cfg", "r"), open("scholar/scrapy.cfg", "w")) as (template, generated):
@@ -80,9 +80,9 @@ except IOError as e:
     print "Could not open either scrapy.cfg template file or scrapy.cfg"
     print "scholar/scrapy-template.cfg", "scholar/scrapy.cfg"
     print e
-    exit() 
+    exit()
 
-# Deploy the egg     
+# Deploy the egg
 print "Sending scholarScrape's scrapy egg to scrapyd server..."
 os.chdir("scholar")
 p = subprocess.Popen(['scrapy', 'deploy'], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
@@ -92,11 +92,11 @@ try :
     output = json.loads(output)
     if output['status'] != "ok" :
         print "There was a problem sending the scrapy egg."
-        print output, errors    
+        print output, errors
         exit()
 except ValueError:
     print "There was a problem sending the scrapy egg."
-    print output, errors     
+    print output, errors
     exit()
 print "The egg was successfully sent to scrapyd server", config['scrapyd']['host'], "on port", config['scrapyd']['port']
 os.chdir("..")
@@ -105,15 +105,15 @@ print "Starting the server"
 
 class Home(resource.Resource):
     isLeaf = False
-    
+
     def __init__(self):
         resource.Resource.__init__(self)
-    
+
     def getChild(self, name, request) :
         if name == '' :
             return self
         return resource.Resource.getChild(self, name, request)
-    
+
     def render_GET(self, request):
         request.setHeader('Content-Type', 'text/html; charset=utf-8')
         # Get session user
@@ -198,7 +198,7 @@ class Home(resource.Resource):
 def _connect_to_db():
     """ attempt to connect to mongo database based on value in config_file
         return db object
-    """  
+    """
     host   = config['mongo']['host']
     port   = config['mongo']['port']
     db     = config['mongo']['database']
