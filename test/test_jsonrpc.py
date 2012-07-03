@@ -53,18 +53,21 @@ class TestJsonRPC:
 
         duplicates = self.jsonrpc.jsonrpc_give_me_duplicates(self.project, self.campaign, 3, 1)
         assert len(duplicates["duplicates"]) == 3
+        assert duplicates["cluster"] == 1
         for dup in duplicates["duplicates"]:
             dup = json.loads(dup)
             assert dup["title"] in ["test1", "test2", "test3"]
 
         duplicates = self.jsonrpc.jsonrpc_give_me_duplicates(self.project, self.campaign, 2, 1)
         assert len(duplicates["duplicates"]) == 2
+        assert duplicates["cluster"] == 1
         for dup in duplicates["duplicates"]:
             dup = json.loads(dup)
             assert dup["title"] in ["test1", "test2", "test3"]
 
         duplicates = self.jsonrpc.jsonrpc_give_me_duplicates(self.project, self.campaign, 3, 2)
         assert len(duplicates["duplicates"]) == 2
+        assert duplicates["cluster"] == 2
         for dup in duplicates["duplicates"]:
             dup = json.loads(dup)
             assert dup["title"] in ["test4", "test5"]
