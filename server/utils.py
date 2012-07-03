@@ -1,5 +1,5 @@
 import json
-import os
+import os.path
 import pprint
 
 print 'Loading users file...'
@@ -50,7 +50,7 @@ def scholarize(query="", nr_results_per_page="100", exact="", at_least_one="",
              btnG=Search+Scholar&hl=en& \
              as_subj=" + str.join('&as_subj',areas) ).replace(" ","")
 
-root_dir = os.path.dirname(__file__)    
+root_dir = os.path.abspath(os.path.dirname(__file__))
 pp = pprint.PrettyPrinter(indent=4)
 web_client_dir = 'web_client'
 data_dir = os.path.join(root_dir, config['data_dir'])

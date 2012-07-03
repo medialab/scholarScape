@@ -126,7 +126,7 @@ class Home(resource.Resource):
             explore = False
             admin = False
             logout = False
-            path = os.path.join(web_client_dir, 'login.html')
+            path = os.path.join(root_dir, web_client_dir, 'login.html')
         else:
             # Send the salt and hashed login as an hidden tag
             login = hashlib.md5(config['salt'] + user.getUserName()).hexdigest()
@@ -154,11 +154,11 @@ class Home(resource.Resource):
                     explore = False
                     admin = False
                     logout = False
-                path = os.path.join(web_client_dir, "%s.html" % request.args['page'][0])
-                path = path if os.path.exists(path) else os.path.join(web_client_dir, '404.html')
+                path = os.path.join(root_dir, web_client_dir, "%s.html" % request.args['page'][0])
+                path = path if os.path.exists(path) else os.path.join(root_dir, web_client_dir, '404.html')
             else:
-                path = os.path.join(web_client_dir, 'index.html')
-        layout_path = os.path.join(web_client_dir, 'layout.html')
+                path = os.path.join(root_dir, web_client_dir, 'index.html')
+        layout_path = os.path.join(root_dir, web_client_dir, 'layout.html')
         with nested(open(path, 'r'), open(layout_path, "r")) as (fpage, flayout):
             layout = flayout.read().decode('utf-8')
             page = fpage.read().decode('utf-8')
