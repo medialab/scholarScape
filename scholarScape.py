@@ -16,7 +16,7 @@ import hashlib
 import pystache
 import subprocess
 from server.rpc import scholarScape
-from server.utils import users, config, scholarize, data_dir
+from server.utils import users, config, scholarize, data_dir, root_dir, web_client_dir
 from datetime import date
 from contextlib import nested
 from txjsonrpc.web import jsonrpc
