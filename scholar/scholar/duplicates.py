@@ -133,7 +133,7 @@ def calculate_dup_scores(col,dup_col,human_check_treshold) :
     logging.info("Done : %i", time.clock() - t1)
 
 
-def merge_duplicates(campaign, col, dup_col, publication_ids,duplicate_flag="human_say") :
+def merge_duplicates(campaign, col, dup_col, publication_ids, duplicate_flag="human_say") :
     """
         merge a list of publications ids in one parent publication
         already merged publication can be present in publication_ids
