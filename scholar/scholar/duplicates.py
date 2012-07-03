@@ -133,11 +133,15 @@ def calculate_dup_scores(col,dup_col,human_check_treshold) :
     logging.info("Done : %i", time.clock() - t1)
 
 
-def merge_duplicates(campaign, col, dup_col, publication_ids, duplicate_flag="human_say") :
+def merge_duplicates(campaign, col, dup_col, publication_ids, duplicate_flag="human_say", mark_with=True):
     """
         merge a list of publications ids in one parent publication
         already merged publication can be present in publication_ids
-        duplicate_flag indicates the name of the key to set to True in the duplicate collection (default 'human_say')
+        duplicate_flag indicates the name of the key to set in the duplicate \
+        collection (default 'human_say')
+        mark_with indicates the content of the key set in the duplicate \
+        collection, if bool(mark_with) is False, we don't create a \
+        super_publication
     """
     t1 = time.clock()
 
@@ -159,83 +163,84 @@ def merge_duplicates(campaign, col, dup_col, publication_ids, duplicate_flag="hu
         _pub2 = children[pub2] if children[pub2] else [pub2]
         # generate duplicates pairs from children, pairs are generated in both ways (a,b) and (b,a)
         # change the flag sepcified in duplicate_flag to true i.e. human_say or automatic_treshold_1 to track merging in dup_col
-        dup_col.update({"$or" : [{"_id1":ObjectId(pair[0]),"_id2":ObjectId(pair[1])} for pair in chain(product(_pub1,_pub2),product(_pub2,_pub1)) ] }, {"$set" : {duplicate_flag : True} }, multi=True )
+        dup_col.update({"$or" : [{"_id1":ObjectId(pair[0]),"_id2":ObjectId(pair[1])} for pair in chain(product(_pub1,_pub2),product(_pub2,_pub1)) ] }, {"$set" : {duplicate_flag : mark_with} }, multi=True )
 
 
-    #information to get to create the father
-    what_to_get = {
-        "title"      : 1,
-        "authors"    : 1,
-        "times_cited": 1,
-        "book_title" : 1,
-        "depths"     : 1,
-        "cites"      : 1,
-        "campaign"   : 1,
-        "source"     : 1,
-        "_id"        : 0
-    }
+    if mark_with:
+        #information to get to create the father
+        what_to_get = {
+            "title"      : 1,
+            "authors"    : 1,
+            "times_cited": 1,
+            "book_title" : 1,
+            "depths"     : 1,
+            "cites"      : 1,
+            "campaign"   : 1,
+            "source"     : 1,
+            "_id"        : 0
+        }
 
-    # get all children : children of publications + publications without children
-    publications_and_children=[v for v in children.values() if v] + [k for (k,v) in children.iteritems() if not v]
-    logging.info("%s"%(publications_and_children))
-    # old parents = pulications with children
-    old_parents=[k for (k,v) in children.iteritems() if v]
+        # get all children : children of publications + publications without children
+        publications_and_children=[v for v in children.values() if v] + [k for (k,v) in children.iteritems() if not v]
+        logging.info("%s"%(publications_and_children))
+        # old parents = pulications with children
+        old_parents=[k for (k,v) in children.iteritems() if v]
 
-    # remove old parents
-    if old_parents :
-        col.remove({"$and" : [ {"$or":[{"_id":id} for id in old_parents]} , {"type" : "super_publication"}]})
+        # remove old parents
+        if old_parents :
+            col.remove({"$and" : [ {"$or":[{"_id":id} for id in old_parents]} , {"type" : "super_publication"}]})
 
-    children_ids = []
-    title = ""
-    authors = set()
-    book_title = ""
-    depths = set()
-    cites = set()
-    times_cited = 0
-    nr_children = 0
+        children_ids = []
+        title = ""
+        authors = set()
+        book_title = ""
+        depths = set()
+        cites = set()
+        times_cited = 0
+        nr_children = 0
 
 
 
-    # merge all children in one parent
-    for pub_id in publications_and_children :
-        children_ids.append({"_id" : pub_id })
-        nr_children += 1
-        pub = col.find_one( {"_id" : pub_id }, what_to_get)
-        if not pub:
-            # should not happen !
-            logging.info("unknown Publication found in _dup_ collection : "+str(pub_id))
-        else :
-            if pub.get("title") and len(pub["title"]) > len(title):
-                title =  pub["title"]
-            if pub.get("authors"):
-                authors = authors|set(pub["authors"])
-            if pub.get("book_title") and len(pub["book_title"]) > len(book_title):
-                book_title = pub["book_title"]
-            depths = depths | set(pub["depths"])
-            if pub.get("cites") :
-                try :
-                    cites = cites | set( [ pub["cites"] ] )
-                except :
-                    print pub["cites"]
-                    exit(0)
-            if pub.get("times_cited") :
-                times_cited += pub["times_cited"]
-    # create a new common parent
-    newparent_id = col.insert( {
-                    "title" : title,
-                    "authors" : list(authors),
-                    "book_title" : book_title,
-                    "depths" : list(depths),
-                    "cites" : list(cites),
-                    "times_cited" : times_cited,
-                    "type" : "super_publication",
-                    "nr_children" : nr_children,
-                    "campaign" : campaign
-                } )
-    logging.info("created the parent with id : %s for %i children" % (newparent_id,nr_children) )
-    # add reference to the new parent in children
-    col.update({"$or" : children_ids}, {"$set" : {"parent_id" : newparent_id} }, multi=True )
-    logging.info("Finished merging duplicates in %i" % (t1 - time.clock()) )
+        # merge all children in one parent
+        for pub_id in publications_and_children :
+            children_ids.append({"_id" : pub_id })
+            nr_children += 1
+            pub = col.find_one( {"_id" : pub_id }, what_to_get)
+            if not pub:
+                # should not happen !
+                logging.info("unknown Publication found in _dup_ collection : "+str(pub_id))
+            else :
+                if pub.get("title") and len(pub["title"]) > len(title):
+                    title =  pub["title"]
+                if pub.get("authors"):
+                    authors = authors|set(pub["authors"])
+                if pub.get("book_title") and len(pub["book_title"]) > len(book_title):
+                    book_title = pub["book_title"]
+                depths = depths | set(pub["depths"])
+                if pub.get("cites") :
+                    try :
+                        cites = cites | set( [ pub["cites"] ] )
+                    except :
+                        print pub["cites"]
+                        exit(0)
+                if pub.get("times_cited") :
+                    times_cited += pub["times_cited"]
+        # create a new common parent
+        newparent_id = col.insert( {
+                        "title" : title,
+                        "authors" : list(authors),
+                        "book_title" : book_title,
+                        "depths" : list(depths),
+                        "cites" : list(cites),
+                        "times_cited" : times_cited,
+                        "type" : "super_publication",
+                        "nr_children" : nr_children,
+                        "campaign" : campaign
+                    } )
+        logging.info("created the parent with id : %s for %i children" % (newparent_id,nr_children) )
+        # add reference to the new parent in children
+        col.update({"$or" : children_ids}, {"$set" : {"parent_id" : newparent_id} }, multi=True )
+        logging.info("Finished merging duplicates in %i" % (t1 - time.clock()) )
 
 
 def remove_duplicates(db, project, campaign) :

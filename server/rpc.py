@@ -118,7 +118,7 @@ class scholarScape(jsonrpc.JSONRPC):
             duplicates.merge_duplicates(campaign, col, dup_col, dup_ids)
             return "Has been marked as duplicate"
         else:
-            # TODO
+            duplicates.merge_duplicates(campaign, col, dup_col, dup_ids, mark_with=False)
             return "Has been marked as not duplicate"
 
     def jsonrpc_list_campaigns(self, project_name) :
