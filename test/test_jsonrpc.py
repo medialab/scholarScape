@@ -1,10 +1,65 @@
 from bson.objectid import ObjectId
 from scholarScape.server.rpc import scholarScape
+from scholarScape.server.db_lib import Duplicates
+from mock import patch
 import pymongo
 import uuid
 import json
+import pytest
 
-class TestJsonRPC:
+@patch.object(Duplicates, "get_list_of_potential_duplicates")
+@patch.object(Duplicates, "count_duplicates_left_for_cluster")
+@patch.object(Duplicates, "count_already_checked")
+@patch.object(Duplicates, "get_cluster_with_possible_duplicates_left")
+class TestJsonRPCIsolation:
+    def test_give_me_duplicates_no_cluster_id(self, get_cluster_with_possible_duplicates_left, count_already_checked, count_duplicates_left_for_cluster, get_list_of_potential_duplicates):
+        expected = [{"test1" : 1},{"test2" : 2},{"test3" : 3}]
+
+        get_cluster_with_possible_duplicates_left.return_value = 2
+        count_already_checked.return_value = 352
+        count_duplicates_left_for_cluster.return_value = 700
+        get_list_of_potential_duplicates.return_value = expected
+
+        jsonrpc = scholarScape(None)
+        result = jsonrpc.jsonrpc_give_me_duplicates("project", "campaign", 3)
+
+        assert result == {
+            'number_of_duplicates_left_for_cluster' : 700,
+            'number_duplicates_already_checked' : 352,
+            'duplicates' : map(json.dumps, expected),
+            'cluster' : 2,
+            }
+
+        get_cluster_with_possible_duplicates_left.assert_called_once_with(None, "project", "campaign")
+        count_already_checked.assert_called_once_with(None, "project", "campaign")
+        count_duplicates_left_for_cluster.assert_called_once_with(None, "project", "campaign", 2)
+        get_list_of_potential_duplicates.assert_called_once_with(None, "project", "campaign", 2)
+
+    def test_give_me_duplicates_with_cluster_id(self, get_cluster_with_possible_duplicates_left, count_already_checked, count_duplicates_left_for_cluster, get_list_of_potential_duplicates):
+        expected = [{"test1" : 1},{"test2" : 2},{"test3" : 3}]
+
+        get_cluster_with_possible_duplicates_left.return_value = 2
+        count_already_checked.return_value = 352
+        count_duplicates_left_for_cluster.return_value = 700
+        get_list_of_potential_duplicates.return_value = expected
+
+        jsonrpc = scholarScape(None)
+        result = jsonrpc.jsonrpc_give_me_duplicates("project", "campaign", 3, 2)
+
+        assert result == {
+            'number_of_duplicates_left_for_cluster' : 700,
+            'number_duplicates_already_checked' : 352,
+            'duplicates' : map(json.dumps, expected),
+            'cluster' : 2,
+            }
+
+        assert not get_cluster_with_possible_duplicates_left.called
+        count_already_checked.assert_called_once_with(None, "project", "campaign")
+        count_duplicates_left_for_cluster.assert_called_once_with(None, "project", "campaign", 2)
+        get_list_of_potential_duplicates.assert_called_once_with(None, "project", "campaign", 2)
+
+@pytest.mark.slow
+class TestJsonRPCIntegration:
     def setup_class(self):
         self.connection = pymongo.Connection()
         self.database_name = str(uuid.uuid4())
@@ -120,6 +175,11 @@ class TestJsonRPC:
         _id2 = ObjectId()
         _id3 = ObjectId()
         _id4 = ObjectId()
+
+        duplicates = self.jsonrpc.jsonrpc_give_me_duplicates(self.project, self.campaign, 3)
+        assert duplicates["cluster"] == -1
+        assert duplicates["duplicates"] == []
+
         self.project_col.insert({"_id" : _id1, "title" : "test1"})
         self.project_col.insert({"_id" : _id2, "title" : "test2"})
         self.project_col.insert({"_id" : _id3, "title" : "test3"})
