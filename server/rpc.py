@@ -15,7 +15,9 @@ from twisted.internet import threads
 from txjsonrpc.web import jsonrpc
 from utils import users, config, scholarize, data_dir
 from random import getrandbits
+
 import scholar.scholar.duplicates as duplicates
+from scholarScape.server.db_lib import Duplicates
 
 class scholarScape(jsonrpc.JSONRPC):
     """
@@ -68,44 +70,22 @@ class scholarScape(jsonrpc.JSONRPC):
         """
         Return lists of duplicates
         """
-        TITLE_THRESOLD = 0.8
-
-        col = self.db[project]
-        dup_col = self.db["__dup__" + project + "-" + campaign]
-
         if cluster_id == None:
-            clusters = dup_col.distinct("cluster")
-            if len(clusters) == 0:
-                cluster_id = 0
-            else:
-                for cluster in clusters:
-                    possible_duplicates_left = dup_col.find({'title_score' : {'$gt' : TITLE_THRESOLD, '$lt' : 1}, 'cluster' : cluster, 'human_say' : {"$exists" : False}}).count()
-                    if possible_duplicates_left:
-                        cluster_id = cluster
+            cluster_id = Duplicates.get_cluster_with_possible_duplicates_left(self.db, project, campaign)
 
+        total_number_of_possible_duplicates = 0
+        number_duplicates_already_checked = Duplicates.count_already_checked(self.db, project, campaign)
 
-        total_number_of_possible_duplicates = dup_col.find({'title_score' : {'$gt' : TITLE_THRESOLD, '$lt' : 1}, 'cluster' : {'$exists' : True}}).count()
-        number_duplicates_already_checked = dup_col.find({'title_score' : {'$gt' : TITLE_THRESOLD, '$lt' : 1}, 'human_say' : {'$exists' : True}}).count()
         if cluster_id:
-            # Get the first cluster
-            possible_duplicates = dup_col.find({'title_score' : {'$gte' : TITLE_THRESOLD, '$lt' : 1}, 'cluster' : cluster_id, 'human_say' : {'$exists' : False}})
-            # Select the ids of the duplicated publications
-            duplicate_ids = set()
-            for possible_duplicate in possible_duplicates :
-                duplicate_ids.add(possible_duplicate['_id1'])
-                duplicate_ids.add(possible_duplicate['_id2'])
-            # Get the duplicated publications
             duplicates = []
-            for duplicate_id in duplicate_ids :
-                publication = col.find_one({'_id' : duplicate_id})
-                # TODO
-                # If the publication has a parent, replace the publication by its parent
+            total_number_of_possible_duplicates = Duplicates.count_duplicates_left_for_cluster(self.db, project, campaign, cluster_id)
+            for publication in Duplicates.get_list_of_potential_duplicates(self.db, project, campaign, cluster_id):
                 duplicates.append(json.dumps(publication, default = json_util.default))
         else:
             duplicates = []
             cluster_id = -1
         return {
-            'total_number_of_possible_duplicates' : total_number_of_possible_duplicates,
+            'number_of_duplicates_left_for_cluster' : total_number_of_possible_duplicates,
             'number_duplicates_already_checked' : number_duplicates_already_checked,
             'duplicates' : duplicates[:limit],
             'cluster' : cluster_id,
