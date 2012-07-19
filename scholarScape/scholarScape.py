@@ -15,8 +15,8 @@ import urllib2
 import hashlib
 import pystache
 import subprocess
-from server.rpc import scholarScape
-from server.utils import users, config, scholarize, data_dir, root_dir, web_client_dir
+from scholarScape.server.rpc import scholarScape
+from scholarScape.server.utils import users, config, scholarize, data_dir, root_dir, web_client_dir
 from datetime import date
 from contextlib import nested
 from txjsonrpc.web import jsonrpc
@@ -30,7 +30,7 @@ from twisted.web.server import NOT_DONE_YET
 from twisted.application import service, internet
 from twisted.cred import checkers, credentials, portal
 from itertools import permutations
-import scholar.scholar.duplicates as duplicates
+from scholarScape.scholar.scholar import duplicates
 
 class IUser(Interface):
     '''A user account.
@@ -222,20 +222,21 @@ class Downloader(resource.Resource):
         except Exception as e:
             return 'There was an error : ' + str(e)
 
-db = _connect_to_db()
+if __name__ == "__main__":
+    db = _connect_to_db()
 
-root = Home()
-root.putChild('downloader', Downloader())
-root.putChild('js', static.File(os.path.join(root_dir, web_client_dir, 'js')))
-root.putChild('css', static.File(os.path.join(root_dir, web_client_dir, 'css')))
-root.putChild('fonts', static.File(os.path.join(root_dir, web_client_dir, 'fonts')))
-root.putChild('images', static.File(os.path.join(root_dir, web_client_dir, 'images')))
-manageJson = scholarScape(db)
-root.putChild('json', manageJson)
-data = static.File('data')
-root.putChild('data', data)
+    root = Home()
+    root.putChild('downloader', Downloader())
+    root.putChild('js', static.File(os.path.join(root_dir, web_client_dir, 'js')))
+    root.putChild('css', static.File(os.path.join(root_dir, web_client_dir, 'css')))
+    root.putChild('fonts', static.File(os.path.join(root_dir, web_client_dir, 'fonts')))
+    root.putChild('images', static.File(os.path.join(root_dir, web_client_dir, 'images')))
+    manageJson = scholarScape(db)
+    root.putChild('json', manageJson)
+    data = static.File('data')
+    root.putChild('data', data)
 
-application = service.Application('ScholarScape server. Receives JSON-RPC Requests and also serves the client.')
-site = server.Site(root)
-srv = internet.TCPServer(config['twisted']['port'], site)
-srv.setServiceParent(application)
+    application = service.Application('ScholarScape server. Receives JSON-RPC Requests and also serves the client.')
+    site = server.Site(root)
+    srv = internet.TCPServer(config['twisted']['port'], site)
+    srv.setServiceParent(application)
