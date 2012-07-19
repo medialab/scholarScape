@@ -1,24 +1,22 @@
 from bson.objectid import ObjectId
+from scholarScape.server import rpc
 from scholarScape.server.rpc import scholarScape
 from scholarScape.server.db_lib import Duplicates
-from mock import patch
+from mock import patch, MagicMock
 import pymongo
 import uuid
 import json
 import pytest
 
-@patch.object(Duplicates, "get_list_of_potential_duplicates")
-@patch.object(Duplicates, "count_duplicates_left_for_cluster")
-@patch.object(Duplicates, "count_already_checked")
-@patch.object(Duplicates, "get_cluster_with_possible_duplicates_left")
+@patch("scholarScape.server.rpc.Duplicates")
 class TestJsonRPCIsolation:
-    def test_give_me_duplicates_no_cluster_id(self, get_cluster_with_possible_duplicates_left, count_already_checked, count_duplicates_left_for_cluster, get_list_of_potential_duplicates):
+    def test_give_me_duplicates_no_cluster_id(self, Duplicates):
         expected = [{"test1" : 1},{"test2" : 2},{"test3" : 3}]
 
-        get_cluster_with_possible_duplicates_left.return_value = 2
-        count_already_checked.return_value = 352
-        count_duplicates_left_for_cluster.return_value = 700
-        get_list_of_potential_duplicates.return_value = expected
+        Duplicates.get_cluster_with_possible_duplicates_left.return_value = 2
+        Duplicates.count_already_checked.return_value = 352
+        Duplicates.count_duplicates_left_for_cluster.return_value = 700
+        Duplicates.get_list_of_potential_duplicates.return_value = expected
 
         jsonrpc = scholarScape(None)
         result = jsonrpc.jsonrpc_give_me_duplicates("project", "campaign", 3)
@@ -30,18 +28,18 @@ class TestJsonRPCIsolation:
             'cluster' : 2,
             }
 
-        get_cluster_with_possible_duplicates_left.assert_called_once_with(None, "project", "campaign")
-        count_already_checked.assert_called_once_with(None, "project", "campaign")
-        count_duplicates_left_for_cluster.assert_called_once_with(None, "project", "campaign", 2)
-        get_list_of_potential_duplicates.assert_called_once_with(None, "project", "campaign", 2)
+        Duplicates.get_cluster_with_possible_duplicates_left.assert_called_once_with(None, "project", "campaign")
+        Duplicates.count_already_checked.assert_called_once_with(None, "project", "campaign")
+        Duplicates.count_duplicates_left_for_cluster.assert_called_once_with(None, "project", "campaign", 2)
+        Duplicates.get_list_of_potential_duplicates.assert_called_once_with(None, "project", "campaign", 2)
 
-    def test_give_me_duplicates_with_cluster_id(self, get_cluster_with_possible_duplicates_left, count_already_checked, count_duplicates_left_for_cluster, get_list_of_potential_duplicates):
+    def test_give_me_duplicates_with_cluster_id(self, Duplicates):
         expected = [{"test1" : 1},{"test2" : 2},{"test3" : 3}]
 
-        get_cluster_with_possible_duplicates_left.return_value = 2
-        count_already_checked.return_value = 352
-        count_duplicates_left_for_cluster.return_value = 700
-        get_list_of_potential_duplicates.return_value = expected
+        Duplicates.get_cluster_with_possible_duplicates_left.return_value = 2
+        Duplicates.count_already_checked.return_value = 352
+        Duplicates.count_duplicates_left_for_cluster.return_value = 700
+        Duplicates.get_list_of_potential_duplicates.return_value = expected
 
         jsonrpc = scholarScape(None)
         result = jsonrpc.jsonrpc_give_me_duplicates("project", "campaign", 3, 2)
@@ -53,10 +51,10 @@ class TestJsonRPCIsolation:
             'cluster' : 2,
             }
 
-        assert not get_cluster_with_possible_duplicates_left.called
-        count_already_checked.assert_called_once_with(None, "project", "campaign")
-        count_duplicates_left_for_cluster.assert_called_once_with(None, "project", "campaign", 2)
-        get_list_of_potential_duplicates.assert_called_once_with(None, "project", "campaign", 2)
+        assert not Duplicates.get_cluster_with_possible_duplicates_left.called
+        Duplicates.count_already_checked.assert_called_once_with(None, "project", "campaign")
+        Duplicates.count_duplicates_left_for_cluster.assert_called_once_with(None, "project", "campaign", 2)
+        Duplicates.get_list_of_potential_duplicates.assert_called_once_with(None, "project", "campaign", 2)
 
 @pytest.mark.slow
 class TestJsonRPCIntegration:
