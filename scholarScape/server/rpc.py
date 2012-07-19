@@ -16,7 +16,7 @@ from txjsonrpc.web import jsonrpc
 from utils import users, config, scholarize, data_dir
 from random import getrandbits
 
-import scholarScape.scholar.scholar.duplicates as duplicates
+from scholarScape.scholar.scholar import duplicates
 from scholarScape.server.db_lib import Duplicates
 
 class scholarScape(jsonrpc.JSONRPC):
