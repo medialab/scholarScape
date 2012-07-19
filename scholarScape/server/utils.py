@@ -2,31 +2,37 @@ import json
 import os.path
 import pprint
 
-print 'Loading users file...'
-try :
-    with open('users.json', 'r') as users_file:
-        users = json.load(users_file)
-except IOError as e:
-    print 'Could not open users file', e
-    exit()
-except ValueError as e:
-    print 'Users file is not valid JSON', e
-    exit()
+class LazyJsonObject(object):
+    def __init__(self, filename):
+        self.filename = filename
+        self.json = None
 
-# Read config file and fill in mongo and scrapyd config files with custom values
-# try to connect to DB, send egg to scrapyd server
-# then start twisted server
-print 'Loading config file...'
-try :
-    with open('config.json', 'r') as config_file:
-        config = json.load(config_file)
-except IOError as e:
-    print 'Could not open config file'
-    print e
-    exit()    
-except ValueError as e:
-    print 'Config file is not valid JSON', e
-    exit()
+    def _compute_json(self):
+        with open(self.filename, 'r') as config_file:
+            self.json = json.load(config_file)
+
+    def __getattr__(self, attrname):
+        if not self.json:
+            self._compute_json()
+        return getattr(self.json, attrname)
+
+    def __getitem__(self, itemname):
+        if not self.json:
+            self._compute_json()
+        return self.json[itemname]
+
+class Config(object):
+    def __init__(self):
+        self.config = LazyJsonObject("config.json")
+        self.users = LazyJsonObject("users.json")
+
+        self.root_dir = os.path.abspath(os.path.dirname(__file__))
+        self.pp = pprint.PrettyPrinter(indent=4)
+        self.web_client_dir = 'web_client'
+
+    @property
+    def data_dir(self):
+        return os.path.join(self.root_dir, self.config['data_dir'])
 
 def scholarize(query="", nr_results_per_page="100", exact="", at_least_one="",
                without="", where_words_occurs="", author="", publication="",
@@ -50,7 +56,4 @@ def scholarize(query="", nr_results_per_page="100", exact="", at_least_one="",
              btnG=Search+Scholar&hl=en& \
              as_subj=" + str.join('&as_subj',areas) ).replace(" ","")
 
-root_dir = os.path.abspath(os.path.dirname(__file__))
-pp = pprint.PrettyPrinter(indent=4)
-web_client_dir = 'web_client'
-data_dir = os.path.join(root_dir, config['data_dir'])
+config = Config()

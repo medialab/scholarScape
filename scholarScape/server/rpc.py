@@ -13,7 +13,7 @@ from bson import json_util
 from twisted.web import server
 from twisted.internet import threads
 from txjsonrpc.web import jsonrpc
-from utils import users, config, scholarize, data_dir
+from utils import config, scholarize
 from random import getrandbits
 
 from scholarScape.scholar.scholar import duplicates
@@ -51,10 +51,10 @@ class scholarScape(jsonrpc.JSONRPC):
         # Check for the connected login
         u = None
         r = None
-        for user in users:
+        for user in config.users:
             if login == hashlib.md5(config['salt'] + user).hexdigest() :
                 u = user
-                r = users[user]['role']
+                r = config.users[user]['role']
         if u is None :
             collection_names = []
         elif r == 'admin' :
@@ -63,7 +63,7 @@ class scholarScape(jsonrpc.JSONRPC):
             collection_names.remove('system.users')
             collection_names = [collection_name for collection_name in collection_names if not collection_name.startswith("__")]
         else :
-            collection_names = users[u]['collections']
+            collection_names = config.users[u]['collections']
         return collection_names
 
     def jsonrpc_give_me_duplicates(self, project, campaign, limit, cluster_id=None) :
@@ -301,7 +301,7 @@ class scholarScape(jsonrpc.JSONRPC):
             add_pub_in_graph(not_child) #adding them to the graph
 
         # forge a name
-        filename = os.path.join(os.path.dirname(__file__), data_dir, "gexf", project_name + "-" + campaign + "-" + str(getrandbits(128)) + ".gexf" )
+        filename = os.path.join(os.path.dirname(__file__), config.data_dir, "gexf", project_name + "-" + campaign + "-" + str(getrandbits(128)) + ".gexf" )
 
         # filter nodes whose depth is > max_depth
         to_del = [k for k,n in g.node.iteritems() if n.get('depth') > int(max_depth)]
@@ -321,14 +321,14 @@ class scholarScape(jsonrpc.JSONRPC):
             g.add_node(str(child["_id"]), title=child.get('title') or "")
             g.add_edge(child["parent_id"], child["_id"])
 
-        filename = os.path.join(os.path.dirname(__file__), data_dir, "gexf", "duplicates - "+project+ "-" + campaign + "-" + str(getrandbits(128)) + ".gexf" )
+        filename = os.path.join(os.path.dirname(__file__), config.data_dir, "gexf", "duplicates - "+project+ "-" + campaign + "-" + str(getrandbits(128)) + ".gexf" )
         nx.write_gexf(g,filename)
         return filename
 
     def jsonrpc_export_json(self, project, campaign) :
         print "Dumping database..."
         if campaign == "*" : campaign = ""
-        filename = os.path.join(os.path.dirname(__file__), data_dir, "json", project + "-" + campaign + str(getrandbits(128)) + ".json" )
+        filename = os.path.join(os.path.dirname(__file__), config.data_dir, "json", project + "-" + campaign + str(getrandbits(128)) + ".json" )
         export_command = ("mongoexport -h '%(host)s' -d '%(database)s' -c '%(project)s' -o %(filename)s"
                             % {"host" : config["mongo"]["host"],
                                "database" : config["mongo"]["database"],
@@ -348,7 +348,7 @@ class scholarScape(jsonrpc.JSONRPC):
     def jsonrpc_export_zip(self, project_name, campaign_name) :
         json_file = self.jsonrpc_export_json(project_name, campaign_name)
         gexf_file = self.jsonrpc_export_gexf(project_name, campaign_name)
-        filename = os.path.join(os.path.dirname(__file__), data_dir, "zip", project_name + str(getrandbits(128)) + ".zip" )
+        filename = os.path.join(os.path.dirname(__file__), config.data_dir, "zip", project_name + str(getrandbits(128)) + ".zip" )
         zip_file = zipfile.ZipFile(filename,'w',compression=zipfile.ZIP_DEFLATED)
         zip_file.write(json_file)
         zip_file.write(gexf_file)
