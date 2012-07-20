@@ -1,7 +1,6 @@
 import json
 from scholarScape.server.rpc import scholarScape
 from scholarScape.server import rpc
-from mock import patch
 from flexmock import flexmock
 
 class TestJsonRPCIsolation:
