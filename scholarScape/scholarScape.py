@@ -16,7 +16,7 @@ import hashlib
 import pystache
 import subprocess
 from scholarScape.server.rpc import scholarScape as RPCServer
-from scholarScape.server.utils import users, config, scholarize, data_dir, root_dir, web_client_dir
+from scholarScape.server.utils import config, scholarize
 from datetime import date
 from contextlib import nested
 from txjsonrpc.web import jsonrpc
@@ -54,37 +54,25 @@ class User(object):
 
 # Check if the DB is available
 try :
-    Connection("mongodb://" + config['mongo']['user'] + ":" +
-            config['mongo']['passwd'] + "@" + config['mongo']['host'] + ":" + str(config['mongo']['port']) + "/" + config['mongo']['database'] )
+    Connection("mongodb://" + config.config['mongo']['user'] + ":" +
+            config.config['mongo']['passwd'] + "@" + config.config['mongo']['host'] + ":" + str(config.config['mongo']['port']) + "/" + config.config['mongo']['database'] )
 except errors.AutoReconnect:
-    print "Could not connect to mongodb server", config['mongo']
+    print "Could not connect to mongodb server", config.config['mongo']
     exit()
 
 # Render the pipeline template
 print "Rendering pipelines.py with values from config.json..."
-try :
-    with nested(open("scholar/scholar/pipelines-template.py", "r"), open("scholar/scholar/pipelines.py", "w")) as (template, generated):
-        generated.write(pystache.render(template.read(), config['mongo']))
-except IOError as e:
-    print "Could not open either pipeline-template file or pipeline file"
-    print "scholar/scholar/pipelines-template.py", "scholar/scholar/pipelines.py"
-    print e
-    exit()
+with nested(open("scholarScape/scholar/scholar/pipelines-template.py", "r"), open("scholarScape/scholar/scholar/pipelines.py", "w")) as (template, generated):
+    generated.write(pystache.render(template.read(), config.config['mongo']))
 
 # Render the scrapy cfg
 print "Rendering scrapy.cfg with values from config.json..."
-try :
-    with nested(open("scholar/scrapy-template.cfg", "r"), open("scholar/scrapy.cfg", "w")) as (template, generated):
-        generated.write(pystache.render(template.read(), config['scrapyd']))
-except IOError as e:
-    print "Could not open either scrapy.cfg template file or scrapy.cfg"
-    print "scholar/scrapy-template.cfg", "scholar/scrapy.cfg"
-    print e
-    exit()
+with nested(open("scholarScape/scholar/scrapy-template.cfg", "r"), open("scholarScape/scholar/scrapy.cfg", "w")) as (template, generated):
+    generated.write(pystache.render(template.read(), config.config['scrapyd']))
 
 # Deploy the egg
 print "Sending scholarScrape's scrapy egg to scrapyd server..."
-os.chdir("scholar")
+os.chdir("scholarScape/scholar")
 p = subprocess.Popen(['scrapy', 'deploy'], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 output, errors = p.communicate()
 print output, errors
@@ -98,8 +86,8 @@ except ValueError:
     print "There was a problem sending the scrapy egg."
     print output, errors
     exit()
-print "The egg was successfully sent to scrapyd server", config['scrapyd']['host'], "on port", config['scrapyd']['port']
-os.chdir("..")
+print "The egg was successfully sent to scrapyd server", config.config['scrapyd']['host'], "on port", config.config['scrapyd']['port']
+os.chdir("../..")
 
 print "Starting the server"
 
@@ -126,11 +114,11 @@ class Home(resource.Resource):
             explore = False
             admin = False
             logout = False
-            path = os.path.join(root_dir, web_client_dir, 'login.html')
+            path = os.path.join(config.root_dir, config.web_client_dir, 'login.html')
         else:
             # Send the salt and hashed login as an hidden tag
-            login = hashlib.md5(config['salt'] + user.getUserName()).hexdigest()
-            role = users[user.getUserName()]['role']
+            login = hashlib.md5(config.config['salt'] + user.getUserName()).hexdigest()
+            role = config.users[user.getUserName()]['role']
             if role == 'explorer' :
                 launch = False
                 explore = True
@@ -154,11 +142,11 @@ class Home(resource.Resource):
                     explore = False
                     admin = False
                     logout = False
-                path = os.path.join(root_dir, web_client_dir, "%s.html" % request.args['page'][0])
-                path = path if os.path.exists(path) else os.path.join(root_dir, web_client_dir, '404.html')
+                path = os.path.join(config.root_dir, config.web_client_dir, "%s.html" % request.args['page'][0])
+                path = path if os.path.exists(path) else os.path.join(config.root_dir, config.web_client_dir, '404.html')
             else:
-                path = os.path.join(root_dir, web_client_dir, 'index.html')
-        layout_path = os.path.join(root_dir, web_client_dir, 'layout.html')
+                path = os.path.join(config.root_dir, config.web_client_dir, 'index.html')
+        layout_path = os.path.join(config.root_dir, config.web_client_dir, 'layout.html')
         with nested(open(path, 'r'), open(layout_path, "r")) as (fpage, flayout):
             layout = flayout.read().decode('utf-8')
             page = fpage.read().decode('utf-8')
@@ -173,7 +161,7 @@ class Home(resource.Resource):
         # If the request comes from the login page
         if page == 'login' :
             # If the user exists and the password matches
-            if login in users and users[login]['password'] == password :
+            if login in config.users and config.users[login]['password'] == password :
                 user = User(login)
                 session = request.getSession()
                 session.setComponent(IUser, user)
@@ -187,11 +175,11 @@ class Home(resource.Resource):
             user_role = request.args['form_user_role'][0]
             collections = [request.args[collection][0] for collection in request.args if collection.startswith('project_')]
             # Check if user doesn't exist
-            if login not in users :
+            if login not in config.users :
                 # Add user to the json file
-                users[login] = {'password' : password, 'role' : user_role, 'collections' : collections}
+                config.users[login] = {'password' : password, 'role' : user_role, 'collections' : collections}
                 file = open('users.json', 'w')
-                json.dump(users, file, sort_keys = True, indent = 4)
+                json.dump(config.users, file, sort_keys = True, indent = 4)
                 file.close()
             return self.render_GET(request)
 
@@ -199,11 +187,11 @@ def _connect_to_db():
     """ attempt to connect to mongo database based on value in config_file
         return db object
     """
-    host   = config['mongo']['host']
-    port   = config['mongo']['port']
-    db     = config['mongo']['database']
-    user   = config['mongo']['user']
-    passwd = config['mongo']['passwd']
+    host   = config.config['mongo']['host']
+    port   = config.config['mongo']['port']
+    db     = config.config['mongo']['database']
+    user   = config.config['mongo']['user']
+    passwd = config.config['mongo']['passwd']
 
     try :
         c = Connection("mongodb://" + user +  ":" + passwd  + "@" + host + ":" + str(port) + "/" + db)
@@ -222,21 +210,20 @@ class Downloader(resource.Resource):
         except Exception as e:
             return 'There was an error : ' + str(e)
 
-if __name__ == "__main__":
-    db = _connect_to_db()
+db = _connect_to_db()
 
-    root = Home()
-    root.putChild('downloader', Downloader())
-    root.putChild('js', static.File(os.path.join(root_dir, web_client_dir, 'js')))
-    root.putChild('css', static.File(os.path.join(root_dir, web_client_dir, 'css')))
-    root.putChild('fonts', static.File(os.path.join(root_dir, web_client_dir, 'fonts')))
-    root.putChild('images', static.File(os.path.join(root_dir, web_client_dir, 'images')))
-    manageJson = RPCServer(db)
-    root.putChild('json', manageJson)
-    data = static.File('data')
-    root.putChild('data', data)
+root = Home()
+root.putChild('downloader', Downloader())
+root.putChild('js', static.File(os.path.join(config.root_dir, config.web_client_dir, 'js')))
+root.putChild('css', static.File(os.path.join(config.root_dir, config.web_client_dir, 'css')))
+root.putChild('fonts', static.File(os.path.join(config.root_dir, config.web_client_dir, 'fonts')))
+root.putChild('images', static.File(os.path.join(config.root_dir, config.web_client_dir, 'images')))
+manageJson = RPCServer(db)
+root.putChild('json', manageJson)
+data = static.File('data')
+root.putChild('data', data)
 
-    application = service.Application('ScholarScape server. Receives JSON-RPC Requests and also serves the client.')
-    site = server.Site(root)
-    srv = internet.TCPServer(config['twisted']['port'], site)
-    srv.setServiceParent(application)
+application = service.Application('ScholarScape server. Receives JSON-RPC Requests and also serves the client.')
+site = server.Site(root)
+srv = internet.TCPServer(config.config['twisted']['port'], site)
+srv.setServiceParent(application)
