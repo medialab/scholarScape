@@ -1,38 +1,18 @@
+from contextlib import nested
 import json
 import os.path
 import pprint
 
-class LazyJsonObject(object):
-    def __init__(self, filename):
-        self.filename = filename
-        self.json = None
-
-    def _compute_json(self):
-        with open(self.filename, 'r') as config_file:
-            self.json = json.load(config_file)
-
-    def __getattr__(self, attrname):
-        if not self.json:
-            self._compute_json()
-        return getattr(self.json, attrname)
-
-    def __getitem__(self, itemname):
-        if not self.json:
-            self._compute_json()
-        return self.json[itemname]
-
 class Config(object):
     def __init__(self):
-        self.config = LazyJsonObject("config.json")
-        self.users = LazyJsonObject("users.json")
+        with nested(open("config.json"), open("users.json")) as (config, users):
+            self.config = json.load(config)
+            self.users = json.load(users)
 
-        self.root_dir = os.path.abspath(os.path.dirname(__file__))
-        self.pp = pprint.PrettyPrinter(indent=4)
-        self.web_client_dir = 'web_client'
-
-    @property
-    def data_dir(self):
-        return os.path.join(self.root_dir, self.config['data_dir'])
+            self.root_dir = os.path.abspath(os.path.dirname(__file__))
+            self.pp = pprint.PrettyPrinter(indent=4)
+            self.web_client_dir = 'web_client'
+            self.data_dir = os.path.join(self.root_dir, self.config['data_dir'])
 
 def scholarize(query="", nr_results_per_page="100", exact="", at_least_one="",
                without="", where_words_occurs="", author="", publication="",
