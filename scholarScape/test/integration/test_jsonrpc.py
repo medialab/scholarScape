@@ -56,6 +56,8 @@ class TestJsonRPCIntegration:
 
         duplicates = self.jsonrpc.jsonrpc_give_me_duplicates(self.project, self.campaign, 3, 1)
         assert len(duplicates["duplicates"]) == 3
+        assert duplicates["number_of_duplicates_left_for_cluster"] == 3
+        assert duplicates["number_duplicates_already_checked"] == 0
         assert duplicates["cluster"] == 1
         for dup in duplicates["duplicates"]:
             dup = json.loads(dup)
@@ -63,6 +65,8 @@ class TestJsonRPCIntegration:
 
         duplicates = self.jsonrpc.jsonrpc_give_me_duplicates(self.project, self.campaign, 2, 1)
         assert len(duplicates["duplicates"]) == 2
+        assert duplicates["number_of_duplicates_left_for_cluster"] == 3
+        assert duplicates["number_duplicates_already_checked"] == 0
         assert duplicates["cluster"] == 1
         for dup in duplicates["duplicates"]:
             dup = json.loads(dup)
@@ -70,6 +74,8 @@ class TestJsonRPCIntegration:
 
         duplicates = self.jsonrpc.jsonrpc_give_me_duplicates(self.project, self.campaign, 3, 2)
         assert len(duplicates["duplicates"]) == 2
+        assert duplicates["number_of_duplicates_left_for_cluster"] == 2
+        assert duplicates["number_duplicates_already_checked"] == 0
         assert duplicates["cluster"] == 2
         for dup in duplicates["duplicates"]:
             dup = json.loads(dup)
@@ -97,11 +103,13 @@ class TestJsonRPCIntegration:
 
         duplicates = self.jsonrpc.jsonrpc_give_me_duplicates(self.project, self.campaign, 3, 1)
         assert len(duplicates["duplicates"]) == 2
+        assert duplicates["number_duplicates_already_checked"] == 0
 
         self.jsonrpc.jsonrpc_duplicate_human_check(self.project, self.campaign, [str(_id1), str(_id2)], True)
 
         duplicates = self.jsonrpc.jsonrpc_give_me_duplicates(self.project, self.campaign, 3, 1)
         assert len(duplicates["duplicates"]) == 0
+        assert duplicates["number_duplicates_already_checked"] == 2
 
     def test_marked_as_not_duplicate_dont_reappear(self):
         _id1 = ObjectId()
@@ -151,4 +159,3 @@ class TestJsonRPCIntegration:
         duplicates = self.jsonrpc.jsonrpc_give_me_duplicates(self.project, self.campaign, 3)
         assert duplicates["cluster"] == -1
         assert duplicates["duplicates"] == []
-

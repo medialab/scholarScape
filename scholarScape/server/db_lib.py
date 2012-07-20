@@ -26,19 +26,27 @@ class Duplicates(object):
     @staticmethod
     def count_duplicates_left_for_cluster(db, project, campaign, cluster_id):
         dup_col = db["__dup__" + project + "-" + campaign]
-        return dup_col.find({'title_score' : {'$gt' : TITLE_THRESOLD, '$lt' : 1}, 'cluster' : cluster_id, 'human_say' : {"$exists" : False}}).count()
+        s = set()
+        for dup in dup_col.find({'title_score' : {'$gt' : TITLE_THRESOLD, '$lt' : 1}, 'cluster' : cluster_id, 'human_say' : {"$exists" : False}}):
+            s.add(dup["_id1"])
+            s.add(dup["_id2"])
+        return len(s)
 
     @staticmethod
     def count_already_checked(db, project, campaign):
         dup_col = db["__dup__" + project + "-" + campaign]
-        return dup_col.find({'title_score' : {'$gt' : TITLE_THRESOLD, '$lt' : 1}, 'human_say' : {'$exists' : True}}).count()
+        s = set()
+        for dup in dup_col.find({'title_score' : {'$gt' : TITLE_THRESOLD, '$lt' : 1}, 'human_say' : {'$exists' : True}}):
+            s.add(dup["_id1"])
+            s.add(dup["_id2"])
+        return len(s)
 
     @staticmethod
     def get_list_of_potential_duplicates(db, project, campaign, cluster_id):
         dup_col = db["__dup__" + project + "-" + campaign]
 
         # Get the cluster
-        possible_duplicates = dup_col.find({'title_score' : {'$gte' : TITLE_THRESOLD, '$lt' : 1}, 'cluster' : cluster_id, 'human_say' : {'$exists' : False}})
+        possible_duplicates = dup_col.find({'title_score' : {'$gt' : TITLE_THRESOLD, '$lt' : 1}, 'cluster' : cluster_id, 'human_say' : {'$exists' : False}})
 
         # Select the ids of the duplicated publications
         duplicate_ids = set()
