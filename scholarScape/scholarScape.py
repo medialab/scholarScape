@@ -15,7 +15,7 @@ import urllib2
 import hashlib
 import pystache
 import subprocess
-from scholarScape.server.rpc import scholarScape
+from scholarScape.server.rpc import scholarScape as RPCServer
 from scholarScape.server.utils import users, config, scholarize, data_dir, root_dir, web_client_dir
 from datetime import date
 from contextlib import nested
@@ -231,7 +231,7 @@ if __name__ == "__main__":
     root.putChild('css', static.File(os.path.join(root_dir, web_client_dir, 'css')))
     root.putChild('fonts', static.File(os.path.join(root_dir, web_client_dir, 'fonts')))
     root.putChild('images', static.File(os.path.join(root_dir, web_client_dir, 'images')))
-    manageJson = scholarScape(db)
+    manageJson = RPCServer(db)
     root.putChild('json', manageJson)
     data = static.File('data')
     root.putChild('data', data)
