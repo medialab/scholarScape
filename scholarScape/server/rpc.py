@@ -52,7 +52,7 @@ class scholarScape(jsonrpc.JSONRPC):
         u = None
         r = None
         for user in config.users:
-            if login == hashlib.md5(config['salt'] + user).hexdigest() :
+            if login == hashlib.md5(config.config['salt'] + user).hexdigest() :
                 u = user
                 r = config.users[user]['role']
         if u is None :
@@ -146,7 +146,7 @@ class scholarScape(jsonrpc.JSONRPC):
             if search_type == "urls"    :   return x + "&num=100"
 
         # preparation of the request to scrapyd
-        url = 'http://%s:%s/schedule.json' % (config['scrapyd']['host'], config['scrapyd']['port'])
+        url = 'http://%s:%s/schedule.json' % (config.config['scrapyd']['host'], config.config['scrapyd']['port'])
         values = [('project' , 'scholar'),
                   ('spider' , 'scholar_spider'),
                   ('project_name' , project),
@@ -227,7 +227,7 @@ class scholarScape(jsonrpc.JSONRPC):
     def jsonrpc_cancel_campaign(self, project_name, campaign):
         collection = self.db[project_name]
         job_id = collection.find_one({ "name" : campaign })["job_id"]
-        url = 'http://%s:%s/cancel.json' % (config['scrapyd']['host'], config['scrapyd']['port'])
+        url = 'http://%s:%s/cancel.json' % (config.config['scrapyd']['host'], config.config['scrapyd']['port'])
         values = [("project" , "scholar"),
                   ('job' , job_id),]
 
@@ -328,8 +328,8 @@ class scholarScape(jsonrpc.JSONRPC):
         if campaign == "*" : campaign = ""
         filename = os.path.join(os.path.dirname(__file__), config.data_dir, "json", project + "-" + campaign + str(getrandbits(128)) + ".json" )
         export_command = ("mongoexport -h '%(host)s' -d '%(database)s' -c '%(project)s' -o %(filename)s"
-                            % {"host" : config["mongo"]["host"],
-                               "database" : config["mongo"]["database"],
+                            % {"host" : config.config["mongo"]["host"],
+                               "database" : config.config["mongo"]["database"],
                                "project" : project,
                                "filename" : filename})
         if campaign :
