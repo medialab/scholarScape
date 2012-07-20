@@ -92,13 +92,11 @@ class scholarScape(jsonrpc.JSONRPC):
             }
 
     def jsonrpc_duplicate_human_check(self, project, campaign, dup_ids, is_duplicate):
-        col = self.db[project]
-        dup_col = self.db["__dup__"+project+"-"+campaign]
         if is_duplicate:
-            duplicates.merge_duplicates(campaign, col, dup_col, dup_ids)
+            Duplicates.merge_duplicates(self.db, project, campaign, dup_ids)
             return "Has been marked as duplicate"
         else:
-            duplicates.merge_duplicates(campaign, col, dup_col, dup_ids, mark_with=False)
+            Duplicates.dont_merge_duplicates(self.db, project, campaign, dup_ids)
             return "Has been marked as not duplicate"
 
     def jsonrpc_list_campaigns(self, project_name) :

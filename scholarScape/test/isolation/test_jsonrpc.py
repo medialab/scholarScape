@@ -62,3 +62,27 @@ class TestJsonRPCIsolation:
             'duplicates' : [],
             'cluster' : -1,
             }
+
+    def test_human_check_mark_as_duplicate(self):
+        Duplicates = flexmock(rpc.Duplicates)
+
+        db = flexmock()
+        expected = ["123", "456", "789"]
+
+        Duplicates.should_receive("merge_duplicates").with_args(db, "p", "c", expected).once()
+        Duplicates.should_receive("dont_merge_duplicates").never()
+
+        jsonrpc = scholarScape(db)
+        result = jsonrpc.jsonrpc_duplicate_human_check("p", "c", expected, True)
+
+    def test_human_check_mark_as_not_duplicate(self):
+        Duplicates = flexmock(rpc.Duplicates)
+
+        db = flexmock()
+        expected = ["123", "456", "789"]
+
+        Duplicates.should_receive("merge_duplicates").never()
+        Duplicates.should_receive("dont_merge_duplicates").with_args(db, "p", "c", expected).once()
+
+        jsonrpc = scholarScape(db)
+        result = jsonrpc.jsonrpc_duplicate_human_check("p", "c", expected, False)

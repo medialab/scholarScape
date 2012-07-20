@@ -1,5 +1,7 @@
 TITLE_THRESOLD = 0.8
 
+from scholarScape.scholar.scholar import duplicates
+
 class Publications(object):
     @staticmethod
     def get_publication_by_id(db, project, campaign, id):
@@ -53,3 +55,15 @@ class Duplicates(object):
             duplicates.append(publication)
 
         return duplicates
+
+    @staticmethod
+    def merge_duplicates(db, project, campaign, ids):
+        col = db[project]
+        dup_col = db["__dup__" + project + "-" + campaign]
+        duplicates.merge_duplicates(campaign, col, dup_col, ids)
+
+    @staticmethod
+    def dont_merge_duplicates(db, project, campaign, ids):
+        col = db[project]
+        dup_col = db["__dup__" + project + "-" + campaign]
+        duplicates.merge_duplicates(campaign, col, dup_col, ids, mark_with=False)
