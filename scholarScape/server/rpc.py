@@ -188,7 +188,6 @@ class scholarScape(jsonrpc.JSONRPC):
             result = dict(code = 'fail', message = 'There was an error telling scrapyd to launch campaign crawl.')
             return result
 
-
     #added by Paul
     def jsonrpc_remove_duplicates(self, project_name, campaign):
         col=self.db["__process__remove_duplicates"]
@@ -222,7 +221,6 @@ class scholarScape(jsonrpc.JSONRPC):
             #log
             print "subprocess duplicates started"
             return "process started with PID :%s" % (p.pid)
-
 
     def jsonrpc_cancel_campaign(self, project_name, campaign):
         collection = self.db[project_name]
