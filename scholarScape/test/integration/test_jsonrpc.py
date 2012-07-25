@@ -159,3 +159,7 @@ class TestJsonRPCIntegration:
         duplicates = self.jsonrpc.jsonrpc_give_me_duplicates(self.project, self.campaign, 3)
         assert duplicates["cluster"] == -1
         assert duplicates["duplicates"] == []
+
+    def test_create_project(self):
+        self.jsonrpc.jsonrpc_start_project("test_campaign")
+        assert "test_campaign" in self.database.collection_names()
