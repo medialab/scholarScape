@@ -13,6 +13,8 @@ SPIDER_MODULES = ['scholar.spiders']
 NEWSPIDER_MODULE = 'scholar.spiders'
 USER_AGENT = 'Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/536.6 (KHTML, like Gecko) Chrome/20.0.1092.0 Safari/536.6'
 
+DOWNLOAD_DELAY = 0.25
+
 DEPTH_LIMIT=3
 CONCURRENT_REQUESTS_PER_DOMAIN = 1
 
