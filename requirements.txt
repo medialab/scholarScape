@@ -1,0 +1,5 @@
+scrapy
+networkx
+pystache
+pymongo
+python-Levenshtein
