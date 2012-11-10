@@ -2,6 +2,9 @@
 scholarScape
 ************
 
+.. image:: https://secure.travis-ci.org/medialab/scholarScape.png?branch=master
+   :target: https://travis-ci.org/medialab/scholarScape
+
 Disclaimer
 ==========
 
