@@ -3,3 +3,5 @@ networkx
 pystache
 pymongo
 python-Levenshtein
+flexmock
+txJSON-RPC
