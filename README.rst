@@ -114,7 +114,7 @@ Launch the server
 Now you can launch the scholarScape server. Go to the source directory and execute this command ::
 
     cd scholarScape
-    twistd -ny scholarScape.tac
+    twistd -ny scholarScape.py
 
 You can omit the parameter "n" if you want to start the server as a daemon.
 
