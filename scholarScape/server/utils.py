@@ -1,4 +1,5 @@
 from contextlib import nested
+from urllib import quote_plus as qp
 import json
 import os.path
 import pprint
